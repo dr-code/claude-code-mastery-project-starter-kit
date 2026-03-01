@@ -6,7 +6,14 @@
 # Based on Claude Code Mastery Guides V1-V5 by TheDecipherist
 
 INPUT=$(cat)
-COMMAND=$(echo "$INPUT" | python3 -c "import sys,json; print(json.load(sys.stdin).get('tool_input',{}).get('command',''))" 2>/dev/null)
+
+# Extract command from JSON — try jq first, fall back to grep/sed (no Python needed)
+if command -v jq &>/dev/null; then
+    COMMAND=$(echo "$INPUT" | jq -r '.tool_input.command // ""' 2>/dev/null)
+else
+    # Lightweight fallback: extract "command" value from JSON via grep/sed
+    COMMAND=$(echo "$INPUT" | grep -o '"command"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed 's/.*:[[:space:]]*"//;s/"$//')
+fi
 
 if [ -z "$COMMAND" ]; then
     exit 0

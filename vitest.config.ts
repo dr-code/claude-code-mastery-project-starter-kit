@@ -9,8 +9,7 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html'],
-      include: ['src/**/*.ts'],
-      exclude: ['src/core/db/index.ts'], // wrapper tested via integration
+      include: ['src/**/*.ts', 'scripts/content/**/*.ts'],
     },
   },
 });

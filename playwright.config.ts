@@ -69,5 +69,11 @@ export default defineConfig({
       reuseExistingServer: !process.env.CI,
       timeout: 30_000,
     },
+    {
+      command: 'pnpm dev:test:dashboard',
+      port: 4020,
+      reuseExistingServer: !process.env.CI,
+      timeout: 30_000,
+    },
   ],
 });

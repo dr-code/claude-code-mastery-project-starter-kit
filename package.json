@@ -51,6 +51,15 @@
     "vitest": "^2.0.0"
   },
   "dependencies": {
+    "strictdb": "^0.1.0",
+    "zod": "^3.23.0"
+  },
+  "peerDependencies": {
     "mongodb": "^6.5.0"
+  },
+  "peerDependenciesMeta": {
+    "mongodb": {
+      "optional": true
+    }
   }
 }
