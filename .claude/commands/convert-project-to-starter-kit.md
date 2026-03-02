@@ -7,7 +7,7 @@ allowed-tools: Read, Write, Edit, Bash, Grep, Glob, AskUserQuestion
 
 # Convert Existing Project to Starter Kit
 
-Merge all Claude Code Starter Kit infrastructure (commands, hooks, skills, agents, CLAUDE.md rules, project-docs templates) into an existing project. Non-destructive — preserves everything the user already has.
+Merge all Claude Code Starter Kit infrastructure (commands, hooks, skills, agents, CLAUDE.md rules, docs templates) into an existing project. Non-destructive — preserves everything the user already has.
 
 **Arguments:** $ARGUMENTS
 
@@ -103,7 +103,7 @@ Count and report:
 
 ### Existing project infrastructure
 
-Check existence of: `project-docs/`, `.env.example`, `.gitignore`, `.dockerignore`
+Check existence of: `docs/`, `.env.example`, `.gitignore`, `.dockerignore`
 
 ### Display detection report
 
@@ -124,7 +124,7 @@ Claude Infrastructure:
   claude-mastery-project.conf: exists / missing
 
 Project Infrastructure:
-  project-docs/: exists / missing
+  docs/: exists / missing
   .env.example:  exists / missing
   .gitignore:    exists / missing
   .dockerignore: exists / missing
@@ -333,14 +333,74 @@ Copy infrastructure files from source to target:
 |------|---------------------|---------------------|
 | `CLAUDE.local.md` | Copy from source | Skip |
 | `claude-mastery-project.conf` | Copy from source | Skip |
-| `project-docs/ARCHITECTURE.md` | Create `project-docs/` dir, copy | Skip |
-| `project-docs/INFRASTRUCTURE.md` | Copy | Skip |
-| `project-docs/DECISIONS.md` | Copy | Skip |
+| `docs/PROJECT_CONTEXT.md` | Create with starter template | Skip |
+| `docs/ARCHITECTURE_SUMMARY.md` | Create with starter template | Skip |
+| `docs/ARCHITECTURE.md` | Copy | Skip |
+| `docs/INFRASTRUCTURE.md` | Copy | Skip |
+| `docs/DECISIONS.md` | Copy | Skip |
 | `.env.example` | Copy from source | Merge: read both line by line, add lines from source whose key name (before `=`) doesn't exist in target. Append missing lines at end. |
 | `.gitignore` | Copy from source | Merge: add lines from source that don't exist in target. Ensure `.env`, `CLAUDE.local.md`, `_ai_temp/` are present. |
 | `.dockerignore` | Copy from source | Merge: add lines from source that don't exist in target. |
 
-Create `project-docs/` directory if it doesn't exist before copying.
+Create `docs/` directory if it doesn't exist before creating or copying docs.
+
+If `docs/PROJECT_CONTEXT.md` is missing, create it with:
+
+```markdown
+# Project Context
+
+## Key Commands
+| Command | What it does |
+|---------|-------------|
+| `pnpm dev` | Start dev server |
+| `pnpm test` | Run all tests |
+| `pnpm build` | Build for production |
+| `pnpm typecheck` | TypeScript type-check |
+
+## Feature → Doc Lookup
+
+| Working on... | Read first |
+|---------------|------------|
+| (Add entries here as you create docs with `/mdd <feature>`) | — |
+
+## Common Gotchas
+
+<!-- Add project-specific gotchas here as they are discovered -->
+
+## Reference Docs
+- Architecture: `docs/ARCHITECTURE_SUMMARY.md` (brief) · `docs/ARCHITECTURE.md` (full)
+- Infrastructure: `docs/INFRASTRUCTURE.md`
+- Decisions: `docs/DECISIONS.md`
+- Transcripts: `docs/transcripts/`
+```
+
+If `docs/ARCHITECTURE_SUMMARY.md` is missing, create it with:
+
+```markdown
+# Architecture Summary
+
+> Full architecture detail: `docs/ARCHITECTURE.md`
+
+## System Overview
+
+<!-- 1-paragraph description of what the system does -->
+
+## Service Boundaries
+
+<!-- Describe major services/layers and their responsibilities -->
+
+## Data Flow
+
+<!-- Describe how a typical request moves through the system -->
+
+## Core Invariants
+
+<!-- List the rules that must never be violated -->
+
+## Key Decisions
+
+<!-- Top 2-3 architectural decisions and their rationale -->
+```
 
 Report each file: `+ copied`, `merged (N lines added)`, or `skipped (exists)`
 

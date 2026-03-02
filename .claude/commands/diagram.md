@@ -12,10 +12,10 @@ Scan the actual project and generate/update diagrams based on what exists in cod
 **Type:** $ARGUMENTS
 
 Available types:
-- `architecture` — System overview: services, connections, data flow → updates `project-docs/ARCHITECTURE.md`
-- `api` — API routes map: all endpoints grouped by resource → updates `project-docs/ARCHITECTURE.md`
-- `database` — Database schema: collections, indexes, relationships → updates `project-docs/ARCHITECTURE.md`
-- `infrastructure` — Deployment topology: servers, containers, regions → updates `project-docs/INFRASTRUCTURE.md`
+- `architecture` — System overview: services, connections, data flow → updates `docs/ARCHITECTURE.md`
+- `api` — API routes map: all endpoints grouped by resource → updates `docs/ARCHITECTURE.md`
+- `database` — Database schema: collections, indexes, relationships → updates `docs/ARCHITECTURE.md`
+- `infrastructure` — Deployment topology: servers, containers, regions → updates `docs/INFRASTRUCTURE.md`
 - `all` — Generate all diagram types
 
 If `--update` is passed, replace existing diagrams in-place. Otherwise, show the diagram and ask before writing.
@@ -103,7 +103,7 @@ Scan the project and generate a system overview diagram.
 
 ### Where to write:
 
-Replace the `## System Overview` diagram section in `project-docs/ARCHITECTURE.md`.
+Replace the `## System Overview` diagram section in `docs/ARCHITECTURE.md`.
 Also update `## Service Responsibilities` table and `## Data Flow` section based on findings.
 
 ---
@@ -145,7 +145,7 @@ API Routes Map
 
 ### Where to write:
 
-Add/update an `## API Routes` section in `project-docs/ARCHITECTURE.md`.
+Add/update an `## API Routes` section in `docs/ARCHITECTURE.md`.
 
 ---
 
@@ -195,7 +195,7 @@ Database Schema
 
 ### Where to write:
 
-Add/update a `## Database Schema` section in `project-docs/ARCHITECTURE.md`.
+Add/update a `## Database Schema` section in `docs/ARCHITECTURE.md`.
 
 ---
 
@@ -267,7 +267,7 @@ Infrastructure — Multi-Region
 
 ### Where to write:
 
-Replace the `## Environment Overview` diagram in `project-docs/INFRASTRUCTURE.md`.
+Replace the `## Environment Overview` diagram in `docs/INFRASTRUCTURE.md`.
 
 ---
 
@@ -281,7 +281,7 @@ Run all four types in sequence: architecture → api → database → infrastruc
 
 1. Show the generated diagram(s) to the user
 2. If `--update` was passed: write directly to the docs
-3. If not: ask "Write this to project-docs/ARCHITECTURE.md?" before writing
+3. If not: ask "Write this to docs/ARCHITECTURE.md?" before writing
 4. Add a changelog entry with today's date:
    ```
    | (today) | Updated [type] diagram from code scan |
@@ -296,6 +296,6 @@ Run all four types in sequence: architecture → api → database → infrastruc
    ✓ Infrastructure — multi-region (US + EU)
 
    Written to:
-     project-docs/ARCHITECTURE.md (architecture, api, database)
-     project-docs/INFRASTRUCTURE.md (infrastructure)
+     docs/ARCHITECTURE.md (architecture, api, database)
+     docs/INFRASTRUCTURE.md (infrastructure)
    ```

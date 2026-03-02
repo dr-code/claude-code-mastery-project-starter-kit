@@ -9,8 +9,8 @@ Display the current system architecture.
 
 ## Instructions
 
-1. Read `project-docs/ARCHITECTURE.md`
-2. Read `project-docs/INFRASTRUCTURE.md` (if exists)
+1. Read `docs/ARCHITECTURE.md`
+2. Read `docs/INFRASTRUCTURE.md` (if exists)
 3. Display the architecture overview, data flow, and service map
 
 If these documents don't exist yet, suggest creating them with:

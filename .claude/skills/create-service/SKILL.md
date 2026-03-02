@@ -181,7 +181,7 @@ git branch --show-current
 - [ ] Business logic in handlers/ (not server.ts)
 - [ ] No file exceeds 300 lines
 - [ ] Port assigned in root CLAUDE.md port table
-- [ ] Service added to project-docs/ARCHITECTURE.md
+- [ ] Service added to docs/ARCHITECTURE.md
 - [ ] Basic test file created
 - [ ] .dockerignore created (if using Docker)
 
