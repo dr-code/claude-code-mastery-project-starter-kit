@@ -76,7 +76,7 @@ echo ""
 # ── Step 1: Create directories ─────────────────────────────────────────────────
 progress "Creating directory structure..."
 mkdir -p "$PROJECT_PATH"/.claude/{commands,skills,agents,hooks}
-mkdir -p "$PROJECT_PATH"/project-docs
+mkdir -p "$PROJECT_PATH"/docs
 mkdir -p "$PROJECT_PATH"/tests
 
 # ── Step 2: Copy 16 project-scoped commands ────────────────────────────────────
@@ -195,9 +195,9 @@ Before jumping to conclusions:
 
 | Document | Purpose | When to Read |
 |----------|---------|--------------|
-| `project-docs/ARCHITECTURE.md` | System overview & data flow | Before architectural changes |
-| `project-docs/INFRASTRUCTURE.md` | Deployment details | Before environment changes |
-| `project-docs/DECISIONS.md` | Architectural decisions | Before proposing alternatives |
+| `docs/ARCHITECTURE.md` | System overview & data flow | Before architectural changes |
+| `docs/INFRASTRUCTURE.md` | Deployment details | Before environment changes |
+| `docs/DECISIONS.md` | Architectural decisions | Before proposing alternatives |
 
 **ALWAYS read relevant docs before making cross-service changes.**
 
@@ -303,7 +303,7 @@ LOCALMD_EOF
 # ── Step 6: Create project templates ──────────────────────────────────────────
 progress "Creating project templates..."
 
-cat > "$PROJECT_PATH/project-docs/ARCHITECTURE.md" << 'ARCH_EOF'
+cat > "$PROJECT_PATH/docs/ARCHITECTURE.md" << 'ARCH_EOF'
 # Architecture
 
 > System overview and data flow for the project.
@@ -325,7 +325,7 @@ cat > "$PROJECT_PATH/project-docs/ARCHITECTURE.md" << 'ARCH_EOF'
 <!-- List external services and dependencies -->
 ARCH_EOF
 
-cat > "$PROJECT_PATH/project-docs/INFRASTRUCTURE.md" << 'INFRA_EOF'
+cat > "$PROJECT_PATH/docs/INFRASTRUCTURE.md" << 'INFRA_EOF'
 # Infrastructure
 
 > Deployment and environment details.
@@ -347,7 +347,7 @@ cat > "$PROJECT_PATH/project-docs/INFRASTRUCTURE.md" << 'INFRA_EOF'
 <!-- Describe monitoring and alerting setup -->
 INFRA_EOF
 
-cat > "$PROJECT_PATH/project-docs/DECISIONS.md" << 'DEC_EOF'
+cat > "$PROJECT_PATH/docs/DECISIONS.md" << 'DEC_EOF'
 # Architectural Decisions
 
 > Record of key technical decisions and their rationale.
@@ -490,7 +490,7 @@ This project was created with **clean mode** — all Claude Code infrastructure 
 ## What's Included
 
 - \`.claude/\` — 16 slash commands, 2 skills, 2 agents, 3 hooks
-- \`project-docs/\` — Architecture, Infrastructure, and Decisions templates
+- \`docs/\` — Architecture, Infrastructure, and Decisions templates
 - \`tests/\` — Test checklist and issue tracking templates
 - \`CLAUDE.md\` — Security rules only (no coding opinions)
 - \`.env\` / \`.env.example\` — Environment variable pattern
@@ -503,9 +503,9 @@ Run \`/help\` in Claude Code to see all 16 available commands.
 
 | Document | Purpose |
 |----------|---------|
-| \`project-docs/ARCHITECTURE.md\` | System overview & data flow |
-| \`project-docs/INFRASTRUCTURE.md\` | Deployment details |
-| \`project-docs/DECISIONS.md\` | Architectural decisions |
+| \`docs/ARCHITECTURE.md\` | System overview & data flow |
+| \`docs/INFRASTRUCTURE.md\` | Deployment details |
+| \`docs/DECISIONS.md\` | Architectural decisions |
 README_EOF
 
 # ── Step 8: Git init + register project ───────────────────────────────────────

@@ -701,7 +701,7 @@ cp .claude/hooks/check-rulecatch.sh ~/.claude/hooks/</code></pre>
 │       ├── verify-no-secrets.sh # Stop: check for secrets
 │       ├── check-rulecatch.sh   # Stop: report RuleCatch violations
 │       └── check-env-sync.sh    # Stop: warn on .env/.env.example drift
-├── project-docs/
+├── docs/
 │   ├── ARCHITECTURE.md          # System overview (authoritative)
 │   ├── INFRASTRUCTURE.md        # Deployment details
 │   └── DECISIONS.md             # Architectural decision records
@@ -1160,7 +1160,7 @@ fi</code></pre>
               <li><code>/diagram infrastructure</code> &mdash; deployment topology, regions, containers (scans .env + Docker)</li>
               <li><code>/diagram all</code> &mdash; generate everything at once</li>
             </ul>
-            <p>Writes to <code>project-docs/ARCHITECTURE.md</code> and <code>project-docs/INFRASTRUCTURE.md</code>. Uses ASCII box-drawing — works everywhere, no external tools needed. Add <code>--update</code> to write without asking.</p>
+            <p>Writes to <code>docs/ARCHITECTURE.md</code> and <code>docs/INFRASTRUCTURE.md</code>. Uses ASCII box-drawing — works everywhere, no external tools needed. Add <code>--update</code> to write without asking.</p>
           </div>
 
           <div class="command-card">
@@ -1263,7 +1263,7 @@ npx @rulecatch/ai-pooler monitor --no-api-key</code></pre>
 
           <div class="command-card">
             <h3><code>/architecture</code></h3>
-            <p class="command-desc">Reads <code>project-docs/ARCHITECTURE.md</code> and displays the system overview, data flow diagrams, and service responsibility maps. If docs don't exist, scaffolds them.</p>
+            <p class="command-desc">Reads <code>docs/ARCHITECTURE.md</code> and displays the system overview, data flow diagrams, and service responsibility maps. If docs don't exist, scaffolds them.</p>
           </div>
 
           <div class="command-card">
@@ -1345,7 +1345,7 @@ npx @rulecatch/ai-pooler monitor --no-api-key</code></pre>
 /new-project my-app sveltekit              # SvelteKit full-stack
 /new-project my-api python-api             # FastAPI with PostgreSQL, Docker
 /new-project my-app django                 # Django full-stack</code></pre>
-            <p><strong><code>clean</code></strong> &mdash; All Claude infrastructure (commands, skills, agents, hooks, project-docs, tests templates) with <strong>zero coding opinions</strong>. No TypeScript enforcement, no port assignments, no StrictDB rules, no quality gates. Your project, your rules &mdash; Claude just works.</p>
+            <p><strong><code>clean</code></strong> &mdash; All Claude infrastructure (commands, skills, agents, hooks, docs, tests templates) with <strong>zero coding opinions</strong>. No TypeScript enforcement, no port assignments, no StrictDB rules, no quality gates. Your project, your rules &mdash; Claude just works.</p>
             <p><strong><code>go</code></strong> &mdash; Go project scaffolding with standard layout (cmd/, internal/), Gin router, Makefile builds, golangci-lint, table-driven tests, multi-stage Docker with scratch base (5-15MB images). Supports Gin, Chi, Echo, Fiber, or stdlib net/http.</p>
             <p><strong><code>default</code></strong> and other profiles &mdash; Full opinionated scaffolding with project type, framework, SSR, hosting (Dokploy/Vercel/static), package manager, database (via StrictDB), extras (Tailwind, Prisma, Docker, CI), and MCP servers. Includes mandatory SEO for web projects and Dokploy deployment scripts with multi-region support.</p>
             <p><strong><code>vue</code> / <code>nuxt</code> / <code>svelte</code> / <code>sveltekit</code> / <code>angular</code></strong> &mdash; Frontend framework scaffolding with CLI scaffold + starter kit overlay. Each gets framework-specific CLAUDE.md rules (Composition API for Vue, Runes for Svelte, Standalone Components for Angular).</p>
@@ -1837,7 +1837,7 @@ pnpm content:dry-run            # Preview what would build</code></pre>
         <div class="doc-template-grid">
           <div class="doc-template-card">
             <h3>ARCHITECTURE.md</h3>
-            <p class="doc-template-location"><code>project-docs/ARCHITECTURE.md</code></p>
+            <p class="doc-template-location"><code>docs/ARCHITECTURE.md</code></p>
             <p>Starts with <strong>&ldquo;This document is AUTHORITATIVE. No exceptions.&rdquo;</strong> Includes:</p>
             <ul>
               <li>ASCII architecture diagram with data flow</li>
@@ -1854,7 +1854,7 @@ pnpm content:dry-run            # Preview what would build</code></pre>
 
           <div class="doc-template-card">
             <h3>DECISIONS.md</h3>
-            <p class="doc-template-location"><code>project-docs/DECISIONS.md</code></p>
+            <p class="doc-template-location"><code>docs/DECISIONS.md</code></p>
             <p>Architectural Decision Records (ADRs) that document <strong>why</strong> you chose X over Y. Includes a template and two starter decisions:</p>
             <ul>
               <li><strong>ADR-001: TypeScript Over JavaScript</strong> &mdash; AI needs explicit type contracts to avoid guessing</li>
@@ -1865,7 +1865,7 @@ pnpm content:dry-run            # Preview what would build</code></pre>
 
           <div class="doc-template-card">
             <h3>INFRASTRUCTURE.md</h3>
-            <p class="doc-template-location"><code>project-docs/INFRASTRUCTURE.md</code></p>
+            <p class="doc-template-location"><code>docs/INFRASTRUCTURE.md</code></p>
             <p>Deployment and environment details:</p>
             <ul>
               <li>Environment overview diagram (production vs local)</li>
@@ -2046,7 +2046,7 @@ pwd
 
           <div class="global-config-item">
             <h4>New Project Standards</h4>
-            <p>Every new project automatically gets: <code>.env</code> + <code>.env.example</code>, proper <code>.gitignore</code>, <code>.dockerignore</code>, TypeScript strict mode, <code>src/tests/project-docs/.claude/</code> directory structure.</p>
+            <p>Every new project automatically gets: <code>.env</code> + <code>.env.example</code>, proper <code>.gitignore</code>, <code>.dockerignore</code>, TypeScript strict mode, <code>src/tests/docs/.claude/</code> directory structure.</p>
           </div>
 
           <div class="global-config-item">

@@ -10,7 +10,7 @@ Check the actual state of all components and report status.
 
 ## Instructions
 
-1. Read `project-docs/ARCHITECTURE.md` for project context (if it exists)
+1. Read `docs/ARCHITECTURE.md` for project context (if it exists)
 2. Check the `src/` directory structure
 3. Check the `tests/` directory for test coverage
 4. Check recent git activity

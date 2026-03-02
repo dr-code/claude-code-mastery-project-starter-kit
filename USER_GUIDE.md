@@ -119,7 +119,7 @@ my-app/
 │   ├── agents/         ← Specialist subagents (reviewer, test writer)
 │   ├── hooks/          ← 9 enforcement scripts that always run
 │   └── settings.json   ← Hooks wired to lifecycle events
-├── project-docs/
+├── docs/
 │   ├── ARCHITECTURE.md ← System overview (fill in as you build)
 │   ├── INFRASTRUCTURE.md ← Deployment details
 │   └── DECISIONS.md    ← Why you chose X over Y
@@ -385,11 +385,11 @@ Scans actual code and generates ASCII diagrams:
 /diagram all             # Generate everything at once
 ```
 
-Writes to `project-docs/ARCHITECTURE.md` and `project-docs/INFRASTRUCTURE.md`. Uses ASCII box-drawing — works everywhere, no external tools needed.
+Writes to `docs/ARCHITECTURE.md` and `docs/INFRASTRUCTURE.md`. Uses ASCII box-drawing — works everywhere, no external tools needed.
 
 #### `/architecture`
 
-Reads and displays `project-docs/ARCHITECTURE.md`. If it doesn't exist, scaffolds a template.
+Reads and displays `docs/ARCHITECTURE.md`. If it doesn't exist, scaffolds a template.
 
 #### `/optimize-docker`
 

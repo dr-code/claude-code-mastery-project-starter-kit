@@ -148,12 +148,12 @@ ls -1 scripts/queries/
 ### 1.9 Project Documentation Templates
 
 ```bash
-ls -1 project-docs/
+ls -1 docs/
 ```
 
-- [ ] `project-docs/ARCHITECTURE.md` exists
-- [ ] `project-docs/INFRASTRUCTURE.md` exists
-- [ ] `project-docs/DECISIONS.md` exists
+- [ ] `docs/ARCHITECTURE.md` exists
+- [ ] `docs/INFRASTRUCTURE.md` exists
+- [ ] `docs/DECISIONS.md` exists
 
 ### 1.10 Test Infrastructure
 
@@ -352,7 +352,7 @@ cat .dockerignore
 - [ ] `.claude/` is listed
 - [ ] `CLAUDE.md` is listed
 - [ ] `CLAUDE.local.md` is listed
-- [ ] `project-docs/` is listed
+- [ ] `docs/` is listed
 - [ ] `coverage/` is listed
 - [ ] `test-results/` is listed
 
@@ -742,7 +742,7 @@ ls -la ~/projects/TESTPROJECT/
 ```bash
 ls -R ~/projects/TESTPROJECT/src/ 2>/dev/null
 ls -R ~/projects/TESTPROJECT/tests/ 2>/dev/null
-ls -R ~/projects/TESTPROJECT/project-docs/ 2>/dev/null
+ls -R ~/projects/TESTPROJECT/docs/ 2>/dev/null
 ls -R ~/projects/TESTPROJECT/.claude/ 2>/dev/null
 ls -R ~/projects/TESTPROJECT/scripts/ 2>/dev/null
 ```
@@ -752,9 +752,9 @@ ls -R ~/projects/TESTPROJECT/scripts/ 2>/dev/null
 - [ ] `tests/unit/` exists
 - [ ] `tests/integration/` exists
 - [ ] `tests/e2e/` exists
-- [ ] `project-docs/ARCHITECTURE.md` exists
-- [ ] `project-docs/INFRASTRUCTURE.md` exists
-- [ ] `project-docs/DECISIONS.md` exists
+- [ ] `docs/ARCHITECTURE.md` exists
+- [ ] `docs/INFRASTRUCTURE.md` exists
+- [ ] `docs/DECISIONS.md` exists
 - [ ] `.claude/commands/` directory exists with commands
 - [ ] `.claude/skills/` directory exists with skills
 - [ ] `.claude/agents/` directory exists with agents
@@ -866,9 +866,9 @@ ls -la ~/projects/TESTPROJECT-CLEAN/
 - [ ] `.claude/settings.json` with hooks wired
 - [ ] `CLAUDE.md` — security rules ONLY (no TypeScript, no ports, no quality gates)
 - [ ] `CLAUDE.local.md` — personal overrides template
-- [ ] `project-docs/ARCHITECTURE.md`
-- [ ] `project-docs/INFRASTRUCTURE.md`
-- [ ] `project-docs/DECISIONS.md`
+- [ ] `docs/ARCHITECTURE.md`
+- [ ] `docs/INFRASTRUCTURE.md`
+- [ ] `docs/DECISIONS.md`
 - [ ] `tests/CHECKLIST.md`
 - [ ] `tests/ISSUES_FOUND.md`
 - [ ] `.env` (empty)
@@ -945,9 +945,9 @@ ls -R ~/projects/TESTPROJECT-GO/internal/ 2>/dev/null
 - [ ] `CLAUDE.md` exists with Go-specific rules
 - [ ] `CLAUDE.local.md` exists
 - [ ] `README.md` exists
-- [ ] `project-docs/ARCHITECTURE.md` exists
-- [ ] `project-docs/INFRASTRUCTURE.md` exists
-- [ ] `project-docs/DECISIONS.md` exists
+- [ ] `docs/ARCHITECTURE.md` exists
+- [ ] `docs/INFRASTRUCTURE.md` exists
+- [ ] `docs/DECISIONS.md` exists
 - [ ] `.claude/` has commands, skills, agents, hooks, settings.json
 - [ ] Git initialized with initial commit
 
@@ -1069,7 +1069,7 @@ ls -R ~/projects/TESTPROJECT-PYTHON/src/ 2>/dev/null
 - [ ] `.gitignore` includes Python-specific entries (__pycache__, .venv)
 - [ ] `CLAUDE.md` has Python-specific rules
 - [ ] `CLAUDE.local.md` exists
-- [ ] `project-docs/ARCHITECTURE.md` exists
+- [ ] `docs/ARCHITECTURE.md` exists
 - [ ] `.claude/` has commands, skills, agents, hooks, settings.json
 - [ ] Git initialized with initial commit
 
@@ -1269,9 +1269,9 @@ cat /tmp/test-convert/.claude/settings.json | python3 -m json.tool
 
 - [ ] `CLAUDE.local.md` exists
 - [ ] `claude-mastery-project.conf` exists
-- [ ] `project-docs/ARCHITECTURE.md` exists
-- [ ] `project-docs/INFRASTRUCTURE.md` exists
-- [ ] `project-docs/DECISIONS.md` exists
+- [ ] `docs/ARCHITECTURE.md` exists
+- [ ] `docs/INFRASTRUCTURE.md` exists
+- [ ] `docs/DECISIONS.md` exists
 - [ ] `.gitignore` exists and includes `.env`
 - [ ] `.env.example` exists
 

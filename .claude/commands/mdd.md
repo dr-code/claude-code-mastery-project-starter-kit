@@ -30,17 +30,20 @@ Read the user's description: **$ARGUMENTS**
 
 Before writing anything, gather context:
 
-1. **Read `CLAUDE.md`** — understand project rules and architecture
-2. **Read `project-docs/ARCHITECTURE.md`** — understand system structure
-3. **Scan `.mdd/docs/`** — see what features already exist
-4. **Scan `src/`** — understand current codebase structure
+1. **Read `CLAUDE.md`** — understand project rules
+2. **Read `docs/PROJECT_CONTEXT.md` if present** — use as primary feature map and quick reference
+3. **Read `docs/ARCHITECTURE_SUMMARY.md` if present** — architecture brief
+4. **Read only the specific feature doc(s) relevant to this request** — do not scan all docs by default
+5. **Read `docs/ARCHITECTURE.md` only if the task changes or crosses architectural boundaries**
+6. **Read subtree `CLAUDE.md` files for the areas being touched** (e.g., `server/CLAUDE.md`, `client/CLAUDE.md`) if present
+7. **Scan `src/`** — only the relevant area for the requested feature
 
 Then ask the user targeted questions using AskUserQuestion. Ask ALL relevant questions upfront in a single interaction — don't spread them across multiple turns:
 
 **Always ask:**
 - "Does this feature need database storage? If so, what data does it store?"
 - "Does this feature have API endpoints? What operations (create, read, update, delete)?"
-- "Does this feature depend on any existing features?" (list the ones from `documentation/`)
+- "Does this feature depend on any existing features?" (list the relevant ones from `docs/PROJECT_CONTEXT.md` or `docs/*.md`)
 - "Are there any edge cases or error scenarios you already know about?"
 
 **Ask if relevant:**
@@ -53,15 +56,13 @@ Wait for all answers before proceeding.
 
 ### Phase 2 — Write the MDD Documentation
 
-Create the feature documentation file at `.mdd/docs/<NN>-<feature-name>.md`.
-
-**Auto-number:** Read `.mdd/docs/` directory, find the highest existing number, increment by 1.
+Create the feature documentation file at `docs/<feature-name>.md`.
 
 The doc MUST follow this exact structure:
 
 ```markdown
 ---
-id: <NN>-<feature-name>
+id: <feature-name>
 title: <Feature Title>
 edition: <project name or "Both">
 depends_on: [<list of documentation IDs this feature depends on>]
@@ -76,7 +77,7 @@ test_files:
 known_issues: []
 ---
 
-# <NN> — <Feature Title>
+# <Feature Title>
 
 ## Purpose
 
@@ -165,7 +166,7 @@ Before writing any implementation code, present a clear plan:
 ```
 🔨 MDD Build Plan for: <Feature Name>
 
-Documentation: .mdd/docs/<NN>-<feature-name>.md ✅
+Documentation: docs/<feature-name>.md ✅
 Test skeletons: <N> tests across <N> files ✅
 
 Implementation steps:
@@ -224,15 +225,17 @@ After implementation is complete:
 
 1. **Run full test suite:** `pnpm test:unit`
 2. **Run typecheck:** `pnpm typecheck`
-3. **Update documentation** — add any `known_issues` discovered during implementation
-4. **Update CLAUDE.md** if new patterns were established
+3. **Update `docs/PROJECT_CONTEXT.md`** — add or refresh the feature entry in the lookup table
+4. **Update `docs/ARCHITECTURE_SUMMARY.md`** only if the feature changes a service boundary, data flow, shared abstraction, or global invariant. Skip for feature-only changes.
+5. **Update `docs/<feature>.md`** — add any `known_issues` discovered during implementation
+6. **Update `CLAUDE.md`** if new project-wide patterns were established
 
 Present the final report:
 
 ```
 ✅ MDD Complete: <Feature Name>
 
-Documentation: .mdd/docs/<NN>-<feature-name>.md
+Documentation: docs/<feature-name>.md
 Files created: <list>
 Tests: <N>/<N> passing
 Typecheck: Clean
@@ -242,6 +245,20 @@ New patterns established: <any new rules worth adding to CLAUDE.md>
 Branch: feat/<feature-name>
 Ready for review — run `git diff main...HEAD` to see all changes.
 ```
+
+### When to Suggest Subtree CLAUDE.md Files
+
+Claude Code loads subtree `CLAUDE.md` files only when working in that directory — the real mechanism for runtime-selective context loading (not `@path` imports in root CLAUDE.md).
+
+When a domain grows complex enough to warrant area-specific rules, suggest creating:
+- `server/CLAUDE.md` — backend auth chain, route patterns, database conventions, test expectations
+- `client/CLAUDE.md` — state management, routing, form conventions, API client usage
+- `client/src/features/<feature>/CLAUDE.md` — feature-specific invariants and edge cases
+
+**Rules:**
+- Only suggest creating subtree CLAUDE.md when the area has meaningful, area-specific complexity
+- Never pre-create empty subtree CLAUDE.md files
+- Subtree CLAUDE.md is preferred over `@path` imports in root CLAUDE.md for domain-specific rules
 
 ---
 
@@ -254,8 +271,9 @@ Triggered when arguments start with `audit`.
 If a section is specified (e.g., `/mdd audit database`), audit only that feature.
 If no section, audit the entire project.
 
-1. **Read all `.mdd/docs/*.md` files** — build the feature map
-2. **If no `.mdd/` directory exists:** Create it with `docs/` and `audits/` subdirectories. Then tell the user: "No MDD documentation found. Run `/mdd` for each feature to create docs first, or I can scan the codebase and create them now. Which do you prefer?"
+1. **Read `docs/PROJECT_CONTEXT.md` if present** — use it as the primary feature map
+2. Only fall back to **scanning `docs/*.md`** if `PROJECT_CONTEXT.md` is absent or incomplete
+3. **If no `docs/` directory exists:** Create it. Also ensure `.mdd/audits/` exists for audit reports. Then tell the user: "No MDD documentation found. Run `/mdd` for each feature to create docs first, or I can scan the codebase and create them now. Which do you prefer?"
    - If "scan": read all source files and generate documentation files (Phase 0)
    - If "manual": exit and let the user create docs per feature
 
@@ -269,7 +287,7 @@ For each feature (or the specified section):
 
 Note format per feature:
 ```markdown
-### [<NN>] <Feature Name>
+### [<feature-id>] <Feature Name>
 **Files read:** <list>
 **Findings:**
 - <severity emoji> <finding description>
@@ -324,7 +342,7 @@ Report progress per finding. Update documentation `known_issues` to remove fixed
 
 Quick overview of MDD state for the project:
 
-1. **Scan `.mdd/docs/`** — count feature docs
+1. **Scan `docs/`** — count feature docs
 2. **Scan `.mdd/audits/`** — find latest audit report
 3. **Count tests** — `pnpm test:unit --reporter=json 2>/dev/null | jq '.numTotalTests'`
 4. **Count known issues** — grep `known_issues` across all docs

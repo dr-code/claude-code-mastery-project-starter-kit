@@ -35,10 +35,13 @@ ls -la ~/.claude/ 2>/dev/null || echo "NO_GLOBAL_DIR"
    - The existing `~/.claude/CLAUDE.md`
    - The starter kit's `global-claude-md/CLAUDE.md`
 2. Compare section by section. The starter kit has these sections:
+   - `## Context About Me`
+   - `## Collaboration Defaults`
+   - `## Non-Negotiable Safety Rules`
+   - `## Session Hygiene`
    - `## Identity`
-   - `## NEVER EVER DO`
-   - `## New Project Setup`
-   - `## Coding Standards (All Projects)`
+   - `## Documentation Model`
+   - `## Tool Preferences`
    - `## Workflow`
 3. For each section:
    - If the section header **already exists** in the user's file → **SKIP** (don't overwrite their version)
@@ -47,9 +50,8 @@ ls -la ~/.claude/ 2>/dev/null || echo "NO_GLOBAL_DIR"
    ```
    Global CLAUDE.md merge:
      ✓ Identity — already exists, skipped
-     ✓ NEVER EVER DO — already exists, skipped
-     + New Project Setup — added
-     + Coding Standards — added
+     + Documentation Model — added
+     + Tool Preferences — added
      ✓ Workflow — already exists, skipped
    ```
 

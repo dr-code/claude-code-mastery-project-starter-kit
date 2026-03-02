@@ -26,6 +26,6 @@ pnpm dev
 
 ## Next Steps
 
-- Read the [Architecture docs](/project-docs/ARCHITECTURE.md)
+- Read the [Architecture docs](/docs/ARCHITECTURE.md)
 - Check the [API documentation](/api/v1/)
 - Join the community

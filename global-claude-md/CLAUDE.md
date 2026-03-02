@@ -1,109 +1,60 @@
-# Global CLAUDE.md — Security Gatekeeper & Standards
+# Global CLAUDE.md
 
-> Place this at ~/.claude/CLAUDE.md
-> It applies to EVERY project you work on.
-> Based on Claude Code Mastery Guides V1-V5 by TheDecipherist
+## Context About Me
+- Physician, beginner programmer. Primarily building MERN stack apps.
+- Prefer thorough planning to minimize revisions — plan first, implement second.
+- Want to be consulted on implementation decisions. Present trade-offs, don't just agree.
+- Looking for genuine technical dialogue, not validation. Correct mistakes directly.
+
+## Collaboration Defaults
+1. Discuss approach before coding.
+2. Present implementation choices with trade-offs.
+3. Agree on approach before writing code.
+4. Follow the agreed plan; stop and discuss unforeseen issues.
+- When uncertain: CLARIFY. When hitting limits: ADMIT gaps.
+- NEVER use emojis.
+- NEVER implement partial solutions without explicit acknowledgment.
+
+## Non-Negotiable Safety Rules
+- NEVER publish secrets (passwords, API keys, tokens) to git, npm, or docker.
+- NEVER commit `.env` files — always verify `.env` is in `.gitignore`.
+- NEVER deploy to production without explicit user approval.
+- NEVER hardcode credentials — always use environment variables.
+- NEVER do project-wide renames without a checklist first.
+- Before ANY commit: verify no secrets in staged files, tests pass.
+- NEVER log sensitive data or use TODO/FIXME/placeholder comments in production code.
+
+## Session Hygiene
+Before ANY context clear/compaction: save transcript to `docs/transcripts/YYYY-MM-DD_HH-MM_<topic>.md` with all messages, decisions, and files modified.
 
 ---
 
 ## Identity
 
-- GitHub: **YourUsername**
-- SSH: `git@github.com:YourUsername/<repo>.git`
+- GitHub: dr-code
+- SSH: `git@github.com:dr-code/<repo>.git`
 
 ---
 
-## NEVER EVER DO
+## Documentation Model
+- Keep root CLAUDE.md minimal — only what is needed every session.
+- Use subtree CLAUDE.md files (e.g., `server/CLAUDE.md`, `client/CLAUDE.md`) for runtime-selective domain instructions.
+- Keep `docs/*` as reference-only. Do not import large docs into root CLAUDE.md via `@path`.
+- `docs/PROJECT_CONTEXT.md` is the canonical feature map and quick reference for a project.
+- `docs/ARCHITECTURE_SUMMARY.md` is the concise architectural brief.
+- Never import transcripts, audits, or large operational guides into any CLAUDE.md.
 
-These rules are ABSOLUTE and apply to every project:
+## When Entering A Project
+- First read the project root `CLAUDE.md`.
+- If present, read `docs/PROJECT_CONTEXT.md` before making changes.
+- If the task affects architecture, boundaries, or cross-cutting behavior, read `docs/ARCHITECTURE_SUMMARY.md` next.
+- When working inside a specific area, rely on subtree `CLAUDE.md` files for domain-specific instructions.
+- Read deeper docs in `docs/*` only when the task requires them.
 
-### NEVER Publish Sensitive Data
-- NEVER publish passwords, API keys, tokens to git/npm/docker
-- Before ANY commit: verify no secrets included
-- NEVER output secrets in responses, logs, or suggestions
-
-### NEVER Commit .env Files
-- NEVER commit `.env` to git
-- ALWAYS verify `.env` is in `.gitignore`
-
-### NEVER Auto-Deploy
-- ALWAYS ask before deploying to production
-- NEVER assume approval — wait for explicit "yes, deploy"
-
-### NEVER Hardcode Credentials
-- ALWAYS use environment variables for secrets
-- NEVER put API keys, passwords, or tokens directly in source code
-
-### NEVER Rename Without a Plan
-- NEVER do project-wide search-and-replace renames without a checklist
-- Renaming causes cascading failures in .md, .env, comments, strings, and paths
-
----
-
-## New Project Setup
-
-When creating ANY new project:
-
-### Required Files
-- `.env` — Environment variables (NEVER commit)
-- `.env.example` — Template with placeholders (committed)
-- `.gitignore` — Must include: .env, .env.*, node_modules/, dist/, CLAUDE.local.md
-- `.dockerignore` — Must include: .env, .git/, node_modules/
-- `CLAUDE.md` — Project instructions
-- `tsconfig.json` — TypeScript configuration (strict mode)
-
-### Required Structure
-```
-project/
-├── src/
-├── tests/
-├── project-docs/
-├── .claude/
-│   ├── commands/
-│   ├── skills/
-│   └── agents/
-└── scripts/
-```
-
-### TypeScript — Always
-- All new files MUST be TypeScript
-- Use strict mode
-- Never use `any` unless absolutely necessary
-
----
-
-## Coding Standards (All Projects)
-
-### Error Handling
-- NEVER swallow errors silently
-- ALWAYS log errors with context before re-throwing
-- Add `process.on('unhandledRejection')` handler to entry points
-
-### Testing
-- ALWAYS define explicit success criteria
-- "Page loads" is NOT a success criterion
-- Every test must assert something meaningful
-
-### Quality Gates
-- No file > 300 lines (split if larger)
-- No function > 50 lines (extract helpers)
-- All tests must pass before committing
-- TypeScript compiles with no errors
-- No linter warnings
-
-### Database
-- ALWAYS use StrictDB for all database access (shared instance pattern)
-- NEVER create database connections in individual files
-
-### Async Performance
-- When multiple `await` calls are independent, ALWAYS use `Promise.all`
-- NEVER await independent operations sequentially — evaluate dependencies first
-
----
+## Tool Preferences
+- For code navigation (definitions, references, implementations, call hierarchies), try LSP before Grep.
 
 ## Workflow
-
-- One task, one chat
-- Use `/clear` between unrelated tasks
-- Quality over speed — ask if unsure
-- Use Plan Mode for anything bigger than a simple fix
+- One task, one chat — use `/clear` between unrelated tasks.
+- Quality over speed — ask if unsure.
+- Use Plan Mode for anything bigger than a simple fix.

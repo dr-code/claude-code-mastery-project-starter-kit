@@ -78,7 +78,7 @@ echo ""
 # ── Step 1: Create directory structure ─────────────────────────────────────────
 progress "Creating directory structure..."
 mkdir -p "$PROJECT_PATH"/.claude/{commands,skills,agents,hooks}
-mkdir -p "$PROJECT_PATH"/project-docs
+mkdir -p "$PROJECT_PATH"/docs
 mkdir -p "$PROJECT_PATH"/src/app/api/v1/health
 mkdir -p "$PROJECT_PATH"/src/handlers
 mkdir -p "$PROJECT_PATH"/src/adapters
@@ -665,8 +665,8 @@ jobs:
             test-results/
 CI_EOF
 
-# ── Step 12: Create CLAUDE.md (comprehensive, all rules) ──────────────────────
-progress "Creating CLAUDE.md (all rules)..."
+# ── Step 12: Create CLAUDE.md (lean root memory) ──────────────────────────────
+progress "Creating CLAUDE.md (lean root memory)..."
 
 cat > "$PROJECT_PATH/CLAUDE.md" << 'CLAUDEMD_EOF'
 # CLAUDE.md — Project Instructions
@@ -696,136 +696,71 @@ cat > "$PROJECT_PATH/CLAUDE.md" << 'CLAUDEMD_EOF'
 
 ---
 
+## MDD Documentation Handbook
+
+**Before ANY task — quick fix or new feature — read `docs/PROJECT_CONTEXT.md` first.**
+It is the canonical feature map, quick reference, and common gotchas doc for the project.
+
+Do NOT grep the codebase to understand a feature — read the relevant doc first.
+If no doc exists for the feature: run `/mdd <feature>` to create one before writing code.
+
+---
+
 ## Critical Rules
 
 ### 0. NEVER Publish Sensitive Data
-
 - NEVER commit passwords, API keys, tokens, or secrets to git/npm/docker
 - NEVER commit `.env` files — ALWAYS verify `.env` is in `.gitignore`
 - Before ANY commit: verify no secrets are included
 - NEVER output secrets in suggestions, logs, or responses
 
 ### 1. TypeScript Always
-
 - ALWAYS use TypeScript for new files (strict mode)
 - NEVER use `any` unless absolutely necessary and documented why
 - When editing JavaScript files, convert to TypeScript first
-- Types are specs — they tell you what functions accept and return
 
 ### 2. API Versioning
-
-```
-CORRECT: /api/v1/users
-WRONG:   /api/users
-```
-
 Every API endpoint MUST use `/api/v1/` prefix. No exceptions.
 
-### 3. Database Access — StrictDB
-
-**ALL database access uses StrictDB directly. No exceptions.**
-
-- Install `strictdb` + your driver, use `StrictDB.create()` at app startup
-- NEVER import native database drivers (`mongodb`, `pg`, etc.) directly
-- Share a single StrictDB instance across the application
-- All query inputs are automatically sanitized against injection
-
-**Test queries go through `scripts/db-query.ts`:**
-1. Create a query file in `scripts/queries/<name>.ts`
-2. Register it in `scripts/db-query.ts`
-3. NEVER create standalone scripts or inline queries in `src/`
-
-### 4. Testing — Explicit Success Criteria
-
-- ALWAYS define explicit success criteria for E2E tests
-- "Page loads" is NOT a success criterion
-- Every E2E test MUST verify: URL, visible elements, data displayed
+### 3. Testing
 - Minimum 3 assertions per test
+- Explicit success criteria only — "page loads" is not a criterion
 
-```typescript
-// CORRECT
-await expect(page).toHaveURL('/dashboard');
-await expect(page.locator('h1')).toContainText('Welcome');
-await expect(page.locator('[data-testid="user"]')).toContainText('test@example.com');
-
-// WRONG — no assertions
-await page.goto('/dashboard');
-```
-
-### 5. NEVER Hardcode Credentials
-
-- ALWAYS use environment variables for secrets
-- NEVER put API keys, passwords, or tokens directly in code
-- NEVER hardcode connection strings — use environment variables from .env
-
-### 6. ALWAYS Ask Before Deploying
-
-- NEVER auto-deploy, even if the fix seems simple
-- NEVER assume approval — wait for explicit "yes, deploy"
-
-### 7. Quality Gates
-
-- No file > 300 lines (split if larger)
-- No function > 50 lines (extract helpers)
+### 4. Quality Gates
+- No file > 300 lines, no function > 50 lines
 - All tests must pass before committing
-- TypeScript must compile with no errors
+- TypeScript compiles clean, no linter warnings
 
-### 8. Parallelize Independent Awaits
+### 5. Git Workflow
+- NEVER work on main
+- Auto-branch hook is ON by default
+- Branch naming: `feat/`, `fix/`, `docs/`, `refactor/`, `chore/`, `test/`
 
-```typescript
-// CORRECT — independent operations in parallel
-const [users, products] = await Promise.all([getUsers(), getProducts()]);
+### 6. Plan Mode
+- For any non-trivial task, start in plan mode
+- Named steps only; when modifying a plan, replace the step instead of appending
 
-// WRONG — sequential when independent
-const users = await getUsers();
-const products = await getProducts();
-```
+### 7. Merge Gate — MDD
+- `docs/` updated to reflect what was actually built
+- Code matches the documented spec
+- Tests pass, typecheck is clean, no secrets committed
 
-### 9. Git Workflow — NEVER Work Directly on Main
+### 8. Renames
+- Never do project-wide renames without a checklist and a fresh follow-up session
 
-**Auto-branch hook is ON by default.** ALWAYS branch BEFORE editing any files:
-
-```bash
-git branch --show-current
-# If on main → create a feature branch IMMEDIATELY:
-git checkout -b feat/<task-name>
-```
-
-### 10. Docker Push Gate
-
-When enabled, ANY `docker push` is BLOCKED until the image passes local verification.
+### 9. CLAUDE.md Is Team Memory
+- When Claude makes a project-specific mistake, add the rule here
 
 ---
 
-## Service Ports (FIXED)
+## Project Docs
 
-| Service | Dev Port | Test Port |
-|---------|----------|-----------|
-| Website | 3000 | 4000 |
-| API | 3001 | 4010 |
-| Dashboard | 3002 | 4020 |
-
----
-
-## When Something Seems Wrong
-
-- Missing UI element? → Check feature gates BEFORE assuming bug
-- Empty data? → Check if services are running BEFORE assuming broken
-- 404 error? → Check service separation BEFORE adding endpoint
-- Auth failing? → Check which auth system BEFORE debugging
-- Test failing? → Read the error message fully BEFORE changing code
-
----
-
-## Project Documentation
-
-| Document | Purpose | When to Read |
-|----------|---------|--------------|
-| `project-docs/ARCHITECTURE.md` | System overview & data flow | Before architectural changes |
-| `project-docs/INFRASTRUCTURE.md` | Deployment details | Before environment changes |
-| `project-docs/DECISIONS.md` | Architectural decisions | Before proposing alternatives |
-
-**ALWAYS read relevant docs before making cross-service changes.**
+- `docs/PROJECT_CONTEXT.md` — feature map, quick reference, common gotchas
+- `docs/ARCHITECTURE_SUMMARY.md` — 1-page architecture brief
+- `docs/ARCHITECTURE.md` — full system architecture
+- `docs/INFRASTRUCTURE.md` — deployment and environment details
+- `docs/DECISIONS.md` — architectural decisions
+- `.env.example` — required environment variables
 
 ---
 
@@ -834,20 +769,9 @@ When enabled, ANY `docker push` is BLOCKED until the image passes local verifica
 - Quality over speed — if unsure, ask before executing
 - Plan first, code second — use plan mode for non-trivial tasks
 - One task, one chat — `/clear` between unrelated tasks
-- When testing: queue observations, fix in batch (not one at a time)
-
----
-
-## Naming — NEVER Rename Mid-Project
-
-If you must rename packages, modules, or key variables:
-
-1. Create a checklist of ALL files and references first
-2. Use IDE semantic rename (not search-and-replace)
-3. Full project search for old name after renaming
-4. Check: .md files, .txt files, .env files, comments, strings, paths
-5. Start a FRESH Claude session after renaming
+- When testing: queue observations, fix in batch
 CLAUDEMD_EOF
+
 
 cat > "$PROJECT_PATH/CLAUDE.local.md" << 'LOCALMD_EOF'
 # CLAUDE.local.md — Personal Overrides
@@ -886,7 +810,7 @@ LOCALMD_EOF
 # ── Step 13: Create project templates + config files ──────────────────────────
 progress "Creating project docs + config files..."
 
-cat > "$PROJECT_PATH/project-docs/ARCHITECTURE.md" << 'ARCH_EOF'
+cat > "$PROJECT_PATH/docs/ARCHITECTURE.md" << 'ARCH_EOF'
 # Architecture
 
 > System overview and data flow for the project.
@@ -908,7 +832,7 @@ cat > "$PROJECT_PATH/project-docs/ARCHITECTURE.md" << 'ARCH_EOF'
 <!-- List external services and dependencies -->
 ARCH_EOF
 
-cat > "$PROJECT_PATH/project-docs/INFRASTRUCTURE.md" << 'INFRA_EOF'
+cat > "$PROJECT_PATH/docs/INFRASTRUCTURE.md" << 'INFRA_EOF'
 # Infrastructure
 
 > Deployment and environment details.
@@ -930,7 +854,7 @@ cat > "$PROJECT_PATH/project-docs/INFRASTRUCTURE.md" << 'INFRA_EOF'
 <!-- Describe monitoring and alerting setup -->
 INFRA_EOF
 
-cat > "$PROJECT_PATH/project-docs/DECISIONS.md" << 'DEC_EOF'
+cat > "$PROJECT_PATH/docs/DECISIONS.md" << 'DEC_EOF'
 # Architectural Decisions
 
 > Record of key technical decisions and their rationale.
@@ -949,6 +873,66 @@ cat > "$PROJECT_PATH/project-docs/DECISIONS.md" << 'DEC_EOF'
 
 <!-- Add decisions below -->
 DEC_EOF
+
+cat > "$PROJECT_PATH/docs/PROJECT_CONTEXT.md" << 'PROJCTX_EOF'
+# Project Context
+
+## Key Commands
+| Command | What it does |
+|---------|-------------|
+| `pnpm dev` | Start dev server |
+| `pnpm test` | Run all tests |
+| `pnpm build` | Build for production |
+| `pnpm typecheck` | TypeScript type-check |
+
+## Feature → Doc Lookup
+
+| Working on... | Read first |
+|---------------|------------|
+| (Add entries here as you create docs with `/mdd <feature>`) | — |
+
+## Common Gotchas
+
+<!-- Add project-specific gotchas here as they are discovered -->
+
+## Reference Docs
+- Architecture: `docs/ARCHITECTURE_SUMMARY.md` (brief) · `docs/ARCHITECTURE.md` (full)
+- Infrastructure: `docs/INFRASTRUCTURE.md`
+- Decisions: `docs/DECISIONS.md`
+- Transcripts: `docs/transcripts/`
+PROJCTX_EOF
+
+cat > "$PROJECT_PATH/docs/ARCHITECTURE_SUMMARY.md" << 'ARCHSUM_EOF'
+# Architecture Summary
+
+> Full architecture detail: `docs/ARCHITECTURE.md`
+
+---
+
+## System Overview
+
+<!-- 1-paragraph description of what the system does -->
+
+## Service Boundaries
+
+<!-- Describe major services/layers and their responsibilities -->
+
+## Data Flow
+
+<!-- Describe how a typical request moves through the system -->
+
+## Core Invariants
+
+<!-- List the rules that must never be violated:
+- Every query is scoped to X
+- Never do Y directly — always use Z
+- etc. -->
+
+## Key Decisions
+
+<!-- Top 2-3 architectural decisions and their rationale.
+Full decision log: docs/DECISIONS.md -->
+ARCHSUM_EOF
 
 cat > "$PROJECT_PATH/tests/CHECKLIST.md" << 'CHECK_EOF'
 # Test Checklist
@@ -1155,9 +1139,9 @@ Run \`/help\` in Claude Code to see all 16 available commands.
 
 | Document | Purpose |
 |----------|---------|
-| \`project-docs/ARCHITECTURE.md\` | System overview & data flow |
-| \`project-docs/INFRASTRUCTURE.md\` | Deployment details |
-| \`project-docs/DECISIONS.md\` | Architectural decisions |
+| \`docs/ARCHITECTURE.md\` | System overview & data flow |
+| \`docs/INFRASTRUCTURE.md\` | Deployment details |
+| \`docs/DECISIONS.md\` | Architectural decisions |
 README_EOF
 
 # ── Step 15: Git init + pnpm install + register project ───────────────────────

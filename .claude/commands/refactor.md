@@ -38,7 +38,7 @@ git branch --show-current
 
 1. The target file (fully — every line)
 2. `CLAUDE.md` — to know the current project rules
-3. `project-docs/ARCHITECTURE.md` — to understand where things belong (if it exists)
+3. `docs/ARCHITECTURE.md` — to understand where things belong (if it exists)
 4. `tsconfig.json` — to check TypeScript strict mode settings (if it exists)
 
 Also check:

@@ -435,7 +435,7 @@ project/
 ├── .mdd/                            # MDD workflow directory (gitignored)
 │   ├── docs/                        # Feature documentation
 │   └── audits/                      # Audit notes, reports, results
-├── project-docs/
+├── docs/
 │   ├── ARCHITECTURE.md          # System overview (authoritative)
 │   ├── INFRASTRUCTURE.md        # Deployment details
 │   └── DECISIONS.md             # Architectural decision records
@@ -795,7 +795,7 @@ Scans your actual code and generates ASCII diagrams automatically:
 - `/diagram infrastructure` — deployment topology, regions, containers (scans .env + Docker)
 - `/diagram all` — generate everything at once
 
-Writes to `project-docs/ARCHITECTURE.md` and `project-docs/INFRASTRUCTURE.md`. Uses ASCII box-drawing — works everywhere, no external tools needed. Add `--update` to write without asking.
+Writes to `docs/ARCHITECTURE.md` and `docs/INFRASTRUCTURE.md`. Uses ASCII box-drawing — works everywhere, no external tools needed. Add `--update` to write without asking.
 
 ### `/install-global`
 
@@ -874,7 +874,7 @@ Checks the actual filesystem state and reports project status — source file co
 
 ### `/architecture`
 
-Reads `project-docs/ARCHITECTURE.md` and displays the system overview, data flow diagrams, and service responsibility maps. If docs don't exist, scaffolds them.
+Reads `docs/ARCHITECTURE.md` and displays the system overview, data flow diagrams, and service responsibility maps. If docs don't exist, scaffolds them.
 
 ### `/worktree`
 
@@ -909,7 +909,7 @@ Removes a project from the starter kit registry and optionally deletes its files
 
 ### `/convert-project-to-starter-kit`
 
-Merges all starter kit infrastructure into an existing project without destroying anything. Creates a safety commit first, detects your language and existing Claude setup, then asks how to handle conflicts (keep yours, replace, or choose per file). Copies commands, hooks, skills, agents, merges CLAUDE.md sections, deep-merges settings.json hooks, and adds infrastructure files (.gitignore, .env.example, project-docs templates). Registers the project so it appears in `/projects-created`. Use `--force` to skip prompts and use "keep existing, add missing" for everything. Undo with `git revert HEAD`.
+Merges all starter kit infrastructure into an existing project without destroying anything. Creates a safety commit first, detects your language and existing Claude setup, then asks how to handle conflicts (keep yours, replace, or choose per file). Copies commands, hooks, skills, agents, merges CLAUDE.md sections, deep-merges settings.json hooks, and adds infrastructure files (.gitignore, .env.example, docs templates). Registers the project so it appears in `/projects-created`. Use `--force` to skip prompts and use "keep existing, add missing" for everything. Undo with `git revert HEAD`.
 
 ```bash
 /convert-project-to-starter-kit ~/projects/my-app
@@ -992,7 +992,7 @@ Full project scaffolding with profiles:
 /new-project my-app django                 # Django full-stack
 ```
 
-**`clean`** — All Claude infrastructure (commands, skills, agents, hooks, project-docs, tests templates) with **zero coding opinions**. No TypeScript enforcement, no port assignments, no database setup, no quality gates. Your project, your rules — Claude just works.
+**`clean`** — All Claude infrastructure (commands, skills, agents, hooks, docs, tests templates) with **zero coding opinions**. No TypeScript enforcement, no port assignments, no database setup, no quality gates. Your project, your rules — Claude just works.
 
 **`go`** — Go project scaffolding with standard layout (cmd/, internal/), Gin router, Makefile builds, golangci-lint, table-driven tests, multi-stage Docker with scratch base (5-15MB images). Supports Gin, Chi, Echo, Fiber, or stdlib net/http.
 
@@ -1282,7 +1282,7 @@ Pre-structured docs that Claude actually follows. Each template uses the "STOP" 
 
 ### ARCHITECTURE.md
 
-`project-docs/ARCHITECTURE.md` — Starts with **"This document is AUTHORITATIVE. No exceptions."** Includes ASCII architecture diagram with data flow, service responsibility table (Does / Does NOT), technology choices with rationale, and an "If You Are About To... STOP" section that blocks scope creep.
+`docs/ARCHITECTURE.md` — Starts with **"This document is AUTHORITATIVE. No exceptions."** Includes ASCII architecture diagram with data flow, service responsibility table (Does / Does NOT), technology choices with rationale, and an "If You Are About To... STOP" section that blocks scope creep.
 
 ```
 ## If You Are About To...
@@ -1294,7 +1294,7 @@ Pre-structured docs that Claude actually follows. Each template uses the "STOP" 
 
 ### DECISIONS.md
 
-`project-docs/DECISIONS.md` — Architectural Decision Records (ADRs) that document **why** you chose X over Y. Includes two starter decisions:
+`docs/DECISIONS.md` — Architectural Decision Records (ADRs) that document **why** you chose X over Y. Includes two starter decisions:
 - **ADR-001: TypeScript Over JavaScript** — AI needs explicit type contracts to avoid guessing
 - **ADR-002: StrictDB for Database Access** — prevents connection pool exhaustion
 
@@ -1302,7 +1302,7 @@ Each ADR has: Context, Decision, Alternatives Considered (with pros/cons table),
 
 ### INFRASTRUCTURE.md
 
-`project-docs/INFRASTRUCTURE.md` — Deployment and environment details: environment overview diagram, environment variables table, deployment prerequisites and steps, rollback procedures, and monitoring setup.
+`docs/INFRASTRUCTURE.md` — Deployment and environment details: environment overview diagram, environment variables table, deployment prerequisites and steps, rollback procedures, and monitoring setup.
 
 ---
 
@@ -1408,7 +1408,7 @@ The global `CLAUDE.md` lives at `~/.claude/CLAUDE.md` and applies to **every pro
 The starter kit includes a complete global config template in `global-claude-md/` with:
 
 - **Absolute Rules** — NEVER publish sensitive data. NEVER commit `.env` files. NEVER auto-deploy. NEVER hardcode credentials. NEVER rename without a plan. These apply to every project, every session.
-- **New Project Standards** — Every new project automatically gets: `.env` + `.env.example`, proper `.gitignore`, `.dockerignore`, TypeScript strict mode, `src/tests/project-docs/.claude/` directory structure.
+- **New Project Standards** — Every new project automatically gets: `.env` + `.env.example`, proper `.gitignore`, `.dockerignore`, TypeScript strict mode, `src/tests/docs/.claude/` directory structure.
 - **Coding Standards** — Error handling requirements, testing standards, quality gates, StrictDB usage — all enforced across every project.
 - **Global Permission Denials** — The companion `settings.json` explicitly denies Claude access to `.env`, `.env.local`, `secrets.json`, `id_rsa`, and `credentials.json` at the permission level — before hooks even run.
 
