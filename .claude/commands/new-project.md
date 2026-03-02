@@ -191,7 +191,7 @@ project/
 │       ├── block-secrets.py
 │       ├── lint-on-save.sh
 │       └── verify-no-secrets.sh
-├── project-docs/
+├── docs/
 │   ├── ARCHITECTURE.md
 │   ├── INFRASTRUCTURE.md
 │   └── DECISIONS.md
@@ -265,9 +265,9 @@ Before jumping to conclusions:
 
 | Document | Purpose | When to Read |
 |----------|---------|--------------|
-| `project-docs/ARCHITECTURE.md` | System overview & data flow | Before architectural changes |
-| `project-docs/INFRASTRUCTURE.md` | Deployment details | Before environment changes |
-| `project-docs/DECISIONS.md` | Architectural decisions | Before proposing alternatives |
+| `docs/ARCHITECTURE.md` | System overview & data flow | Before architectural changes |
+| `docs/INFRASTRUCTURE.md` | Deployment details | Before environment changes |
+| `docs/DECISIONS.md` | Architectural decisions | Before proposing alternatives |
 
 **ALWAYS read relevant docs before making cross-service changes.**
 
@@ -318,11 +318,11 @@ bash "$(pwd)/scripts/scaffold-clean.sh" "$PROJECT_PATH" "$PROJECT_NAME" "$(pwd)"
 ```
 
 The script handles ALL of the following in one execution (~100ms) with a progress indicator:
-- Creates all directories (.claude/, project-docs/, tests/)
+- Creates all directories (.claude/, docs/, tests/)
 - Copies 16 project-scoped commands, 2 skills, 2 agents, 3 hooks
 - Writes settings.json (clean mode — 3 hooks only)
 - Creates CLAUDE.md (security rules only), CLAUDE.local.md
-- Creates project-docs templates (ARCHITECTURE, INFRASTRUCTURE, DECISIONS)
+- Creates docs templates (ARCHITECTURE, INFRASTRUCTURE, DECISIONS)
 - Creates tests templates (CHECKLIST, ISSUES_FOUND)
 - Creates .env, .env.example, .gitignore, .dockerignore, README.md
 - Initializes git with initial commit
@@ -337,7 +337,7 @@ The script handles ALL of the following in one execution (~100ms) with a progres
 - [ ] `.claude/` directory with `scope: project` commands only (16), skills, agents, hooks
 - [ ] `.claude/settings.json` with hooks wired up
 - [ ] `CLAUDE.md` has ONLY security rules (no TypeScript, no ports, no quality gates)
-- [ ] `project-docs/` has all three templates
+- [ ] `docs/` has all three templates
 - [ ] `tests/` has CHECKLIST.md and ISSUES_FOUND.md
 - [ ] `.env` exists (empty)
 - [ ] `.env.example` exists
@@ -430,7 +430,7 @@ project/
 │   └── handlers_test.go         # Handler tests
 ├── scripts/
 │   └── deploy.sh                # Deployment script (if Dokploy)
-├── project-docs/
+├── docs/
 │   ├── ARCHITECTURE.md
 │   ├── INFRASTRUCTURE.md
 │   └── DECISIONS.md
@@ -745,7 +745,7 @@ When creating a Go project, the CLAUDE.md MUST include these Go-specific rules:
 9. Create `.golangci.yml` (using template above)
 10. Create Go-specific `CLAUDE.md` (with Go rules above + universal security rules)
 11. Copy `.claude/` contents from starter kit — only commands with `scope: project` in frontmatter (skills, agents, hooks, settings.json copied in full)
-12. Create `project-docs/` templates (ARCHITECTURE.md, INFRASTRUCTURE.md, DECISIONS.md)
+12. Create `docs/` templates (ARCHITECTURE.md, INFRASTRUCTURE.md, DECISIONS.md)
 13. Create `.env`, `.env.example`, `.gitignore` (Go-specific), `.dockerignore`
 14. Create `CLAUDE.local.md` template
 15. Create `README.md` with Go-specific instructions
@@ -775,7 +775,7 @@ After creation, verify and report:
 - [ ] `internal/middleware/` directory exists
 - [ ] `internal/models/` directory exists
 - [ ] `tests/` directory exists with at least one test
-- [ ] `project-docs/` has ARCHITECTURE.md, INFRASTRUCTURE.md, DECISIONS.md
+- [ ] `docs/` has ARCHITECTURE.md, INFRASTRUCTURE.md, DECISIONS.md
 - [ ] `.claude/` has `scope: project` commands only, skills, agents, hooks, settings.json
 
 **Testing:**
@@ -894,7 +894,7 @@ project/
 │   ├── conftest.py              # pytest fixtures
 │   ├── test_health.py           # Example test
 │   └── e2e/                     # E2E tests (if web)
-├── project-docs/
+├── docs/
 │   ├── ARCHITECTURE.md
 │   ├── INFRASTRUCTURE.md
 │   └── DECISIONS.md
@@ -1221,7 +1221,7 @@ When creating a Python project, the CLAUDE.md MUST include these Python-specific
 11. Create `Dockerfile` (multi-stage with python:3.12-slim)
 12. Create Python-specific CLAUDE.md (with Python rules + universal security rules)
 13. Copy `.claude/` contents from starter kit — only commands with `scope: project` in frontmatter (skills, agents, hooks, settings.json copied in full)
-14. Create `project-docs/` templates (ARCHITECTURE.md, INFRASTRUCTURE.md, DECISIONS.md)
+14. Create `docs/` templates (ARCHITECTURE.md, INFRASTRUCTURE.md, DECISIONS.md)
 15. Create `.env`, `.env.example`, `.gitignore` (Python-specific), `.dockerignore`
 16. Create `CLAUDE.local.md` template
 17. Create `README.md` with Python-specific instructions
@@ -1253,7 +1253,7 @@ After creation, verify and report:
 - [ ] `src/app/api/v1/health.py` exists
 - [ ] `tests/conftest.py` exists
 - [ ] `tests/test_health.py` exists
-- [ ] `project-docs/` has ARCHITECTURE.md, INFRASTRUCTURE.md, DECISIONS.md
+- [ ] `docs/` has ARCHITECTURE.md, INFRASTRUCTURE.md, DECISIONS.md
 - [ ] `.claude/` has `scope: project` commands only, skills, agents, hooks, settings.json
 
 **Testing:**
@@ -1361,7 +1361,7 @@ bash "$(pwd)/scripts/scaffold-default.sh" "$PROJECT_PATH" "$PROJECT_NAME" "$(pwd
 ```
 
 The script handles ALL of the following in one execution with progress indicators:
-- Creates all directories (src/, .claude/, project-docs/, tests/, scripts/, .github/)
+- Creates all directories (src/, .claude/, docs/, tests/, scripts/, .github/)
 - Copies 16 project-scoped commands, 2 skills, 2 agents, all 9 hooks
 - Writes settings.json (full 9-hook config)
 - Installs StrictDB (npm package) + query system
@@ -1371,7 +1371,7 @@ The script handles ALL of the following in one execution with progress indicator
 - Creates Dockerfile (multi-stage standalone)
 - Creates GitHub Actions CI workflow
 - Creates CLAUDE.md (all rules), CLAUDE.local.md
-- Creates project-docs templates, test templates, SEO files
+- Creates docs templates, test templates, SEO files
 - Creates .env, .env.example, .gitignore, .dockerignore, README.md
 - Creates populated features.json manifest
 - Runs pnpm install, initializes git, registers project
@@ -1410,7 +1410,7 @@ For profiles other than `default` and `clean`, scaffold manually:
 project/
 ├── src/
 ├── tests/
-├── project-docs/
+├── docs/
 │   ├── ARCHITECTURE.md
 │   ├── INFRASTRUCTURE.md
 │   └── DECISIONS.md
@@ -1731,7 +1731,7 @@ Sitemap: https://example.com/sitemap.xml
 
 After scaffold:
 - Copy `.claude/` — only commands with `scope: project` in frontmatter (skills, agents, hooks, settings.json copied in full)
-- Add `project-docs/`, CLAUDE.md, CLAUDE.local.md, `.env` files
+- Add `docs/`, CLAUDE.md, CLAUDE.local.md, `.env` files
 - Vitest is included by default from `create vue`
 
 **CLAUDE.md rules for Vue 3 projects:**
@@ -1751,7 +1751,7 @@ After scaffold:
 
 After scaffold:
 - Copy `.claude/` — only commands with `scope: project` in frontmatter (skills, agents, hooks, settings.json copied in full)
-- Add `project-docs/`, CLAUDE.md, CLAUDE.local.md, `.env` files
+- Add `docs/`, CLAUDE.md, CLAUDE.local.md, `.env` files
 - Vitest and Playwright added via `npx nuxi module add @nuxt/test-utils`
 
 **CLAUDE.md rules for Nuxt projects:**
@@ -1770,7 +1770,7 @@ After scaffold:
 
 After scaffold:
 - Copy `.claude/` — only commands with `scope: project` in frontmatter (skills, agents, hooks, settings.json copied in full)
-- Add `project-docs/`, CLAUDE.md, CLAUDE.local.md, `.env` files
+- Add `docs/`, CLAUDE.md, CLAUDE.local.md, `.env` files
 - `sv create` includes Vitest + Playwright if selected during setup
 
 **CLAUDE.md rules for Svelte/SvelteKit projects:**
@@ -1789,7 +1789,7 @@ After scaffold:
 
 After scaffold:
 - Copy `.claude/` — only commands with `scope: project` in frontmatter (skills, agents, hooks, settings.json copied in full)
-- Add `project-docs/`, CLAUDE.md, CLAUDE.local.md, `.env` files
+- Add `docs/`, CLAUDE.md, CLAUDE.local.md, `.env` files
 - Angular includes Jasmine by default — optionally add Vitest with `@analogjs/vitest-angular`
 - Add Playwright for E2E: `npm init playwright@latest`
 

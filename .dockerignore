@@ -29,7 +29,6 @@ test-results/
 playwright-report/
 
 # Documentation (not needed in container)
-project-docs/
 docs/
 *.md
 !README.md
