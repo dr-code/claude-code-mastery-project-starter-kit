@@ -18,7 +18,7 @@
     ]
   },
 
-  "gitignore": [".mdd/", ".tessera/"],
+  "gitignore": [".mdd/", ".tessera/", ".mcp.json"],
 
   "managedBlocks": [
     {
