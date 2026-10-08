@@ -34,7 +34,7 @@ ls ~/.claude/CLAUDE.md 2>/dev/null
 **If `~/.claude/CLAUDE.md` does NOT exist:**
 - ASK: "You don't have a global CLAUDE.md yet. Want me to install the Claude Code Mastery global config to `~/.claude/`? This sets up security rules, hooks, and standards that apply to ALL your projects. (This is a one-time setup.)"
 - If yes: copy `global-claude-md/CLAUDE.md` → `~/.claude/CLAUDE.md` and `global-claude-md/settings.json` → `~/.claude/settings.json`
-- Also copy hooks: `mkdir -p ~/.claude/hooks && cp .claude/hooks/block-secrets.py ~/.claude/hooks/ && cp .claude/hooks/verify-no-secrets.sh ~/.claude/hooks/`
+- Also run `/install-global`: it installs the global hooks listed in `starter-kit-manifest.json` (`files.hooks.global`: block-secrets, verify-no-secrets, check-rulecatch) and wires them in `~/.claude/settings.json`. Projects do NOT list these hooks in their own `settings.json`.
 
 **If `~/.claude/CLAUDE.md` DOES exist:**
 - ASK: "You already have a global CLAUDE.md. Want me to check if the starter kit version has anything new to merge in?"
@@ -164,7 +164,7 @@ project/
 ├── CLAUDE.local.md        # Personal overrides template
 ├── .claude/
 │   ├── settings.json      # Hooks configuration
-│   ├── commands/          # Only scope: project commands (16 of 26)
+│   ├── commands/          # Project commands listed in starter-kit-manifest.json
 │   │   ├── architecture.md
 │   │   ├── commit.md
 │   │   ├── create-api.md
@@ -319,8 +319,7 @@ bash "$(pwd)/scripts/scaffold-clean.sh" "$PROJECT_PATH" "$PROJECT_NAME" "$(pwd)"
 
 The script handles ALL of the following in one execution (~100ms) with a progress indicator:
 - Creates all directories (.claude/, docs/, tests/)
-- Copies 16 project-scoped commands, 2 skills, 2 agents, 3 hooks
-- Writes settings.json (clean mode — 3 hooks only)
+- Applies the starter-kit layer via `scripts/kit-apply.sh --profile clean`: every command in `starter-kit-manifest.json`, 2 skills, 2 agents, 1 project hook (lint-on-save), settings.json from `templates/project-settings.clean.json`, managed `.gitignore` entries, the workflow block in CLAUDE.md, tool checks, and `tessera scan`
 - Creates CLAUDE.md (security rules only), CLAUDE.local.md
 - Creates docs templates (ARCHITECTURE, INFRASTRUCTURE, DECISIONS)
 - Creates tests templates (CHECKLIST, ISSUES_FOUND)
@@ -334,7 +333,7 @@ The script handles ALL of the following in one execution (~100ms) with a progres
 
 ### Clean verification checklist
 
-- [ ] `.claude/` directory with `scope: project` commands only (16), skills, agents, hooks
+- [ ] `.claude/` directory with every command listed in `starter-kit-manifest.json`, skills, agents, and the lint-on-save hook
 - [ ] `.claude/settings.json` with hooks wired up
 - [ ] `CLAUDE.md` has ONLY security rules (no TypeScript, no ports, no quality gates)
 - [ ] `docs/` has all three templates
@@ -744,13 +743,14 @@ When creating a Go project, the CLAUDE.md MUST include these Go-specific rules:
 8. Create `Dockerfile` (multi-stage with scratch, using template above)
 9. Create `.golangci.yml` (using template above)
 10. Create Go-specific `CLAUDE.md` (with Go rules above + universal security rules)
-11. Copy `.claude/` contents from starter kit — only commands with `scope: project` in frontmatter (skills, agents, hooks, settings.json copied in full)
+11. (Starter-kit `.claude/` files are applied in step 17b, after CLAUDE.md and `.gitignore` exist)
 12. Create `docs/` templates (ARCHITECTURE.md, INFRASTRUCTURE.md, DECISIONS.md)
 13. Create `.env`, `.env.example`, `.gitignore` (Go-specific), `.dockerignore`
 14. Create `CLAUDE.local.md` template
 15. Create `README.md` with Go-specific instructions
 16. Create `scripts/deploy.sh` if Dokploy hosting was selected
 17. Run `go mod tidy` to resolve dependencies
+17b. Apply the starter-kit layer: `bash "$(pwd)/scripts/kit-apply.sh" "$PROJECT_PATH" --profile default` — copies commands, skills, agents, project hooks, writes settings.json, adds `.gitignore` entries, adds the workflow block to CLAUDE.md, checks and installs Beacon / Plannotator / Tessera plugin, runs `tessera scan`
 18. Initialize git, create initial commit: "Initial Go project scaffold"
 19. Display verification checklist
 
@@ -1220,13 +1220,14 @@ When creating a Python project, the CLAUDE.md MUST include these Python-specific
 10. Create `Makefile` with dev, test, lint, format, run targets
 11. Create `Dockerfile` (multi-stage with python:3.12-slim)
 12. Create Python-specific CLAUDE.md (with Python rules + universal security rules)
-13. Copy `.claude/` contents from starter kit — only commands with `scope: project` in frontmatter (skills, agents, hooks, settings.json copied in full)
+13. (Starter-kit `.claude/` files are applied in step 19b, after CLAUDE.md and `.gitignore` exist)
 14. Create `docs/` templates (ARCHITECTURE.md, INFRASTRUCTURE.md, DECISIONS.md)
 15. Create `.env`, `.env.example`, `.gitignore` (Python-specific), `.dockerignore`
 16. Create `CLAUDE.local.md` template
 17. Create `README.md` with Python-specific instructions
 18. Create virtual environment: `python -m venv .venv`
 19. Install dependencies: `.venv/bin/pip install -r requirements.txt -r requirements-dev.txt`
+19b. Apply the starter-kit layer: `bash "$(pwd)/scripts/kit-apply.sh" "$PROJECT_PATH" --profile default` — copies commands, skills, agents, project hooks, writes settings.json, adds `.gitignore` entries, adds the workflow block to CLAUDE.md, checks and installs Beacon / Plannotator / Tessera plugin, runs `tessera scan`
 20. Initialize git, create initial commit: "Initial Python project scaffold"
 21. Display verification checklist
 
@@ -1362,8 +1363,7 @@ bash "$(pwd)/scripts/scaffold-default.sh" "$PROJECT_PATH" "$PROJECT_NAME" "$(pwd
 
 The script handles ALL of the following in one execution with progress indicators:
 - Creates all directories (src/, .claude/, docs/, tests/, scripts/, .github/)
-- Copies 16 project-scoped commands, 2 skills, 2 agents, all 9 hooks
-- Writes settings.json (full 9-hook config)
+- Applies the starter-kit layer via `scripts/kit-apply.sh --profile default`: every command in `starter-kit-manifest.json` (including `/mdd`), 2 skills, 2 agents, 6 project hooks, settings.json from `templates/project-settings.json`, managed `.gitignore` entries (`.mdd/`, `.tessera/`, `.mcp.json`), the Superpowers + Plannotator workflow block in CLAUDE.md, Beacon / Plannotator / Tessera plugin checks (auto-install if missing), and `tessera scan`
 - Installs StrictDB (npm package) + query system
 - Creates Next.js app structure (layout, page, API health route, instrumentation)
 - Creates TypeScript, Next.js, Tailwind, PostCSS, Vitest, Playwright configs
@@ -1730,7 +1730,7 @@ Sitemap: https://example.com/sitemap.xml
 **CLI scaffold:** `npm create vue@latest PROJECT -- --typescript --router --pinia`
 
 After scaffold:
-- Copy `.claude/` — only commands with `scope: project` in frontmatter (skills, agents, hooks, settings.json copied in full)
+- Apply the starter-kit layer with `bash "$(pwd)/scripts/kit-apply.sh" "$PROJECT_PATH" --profile default` after CLAUDE.md and `.gitignore` exist and before the initial commit (never copy the kit's own `.claude/settings.json`)
 - Add `docs/`, CLAUDE.md, CLAUDE.local.md, `.env` files
 - Vitest is included by default from `create vue`
 
@@ -1750,7 +1750,7 @@ After scaffold:
 **CLI scaffold:** `npx nuxi@latest init PROJECT --package-manager pnpm`
 
 After scaffold:
-- Copy `.claude/` — only commands with `scope: project` in frontmatter (skills, agents, hooks, settings.json copied in full)
+- Apply the starter-kit layer with `bash "$(pwd)/scripts/kit-apply.sh" "$PROJECT_PATH" --profile default` after CLAUDE.md and `.gitignore` exist and before the initial commit (never copy the kit's own `.claude/settings.json`)
 - Add `docs/`, CLAUDE.md, CLAUDE.local.md, `.env` files
 - Vitest and Playwright added via `npx nuxi module add @nuxt/test-utils`
 
@@ -1769,7 +1769,7 @@ After scaffold:
 **CLI scaffold:** `npx sv create PROJECT` (select TypeScript skeleton)
 
 After scaffold:
-- Copy `.claude/` — only commands with `scope: project` in frontmatter (skills, agents, hooks, settings.json copied in full)
+- Apply the starter-kit layer with `bash "$(pwd)/scripts/kit-apply.sh" "$PROJECT_PATH" --profile default` after CLAUDE.md and `.gitignore` exist and before the initial commit (never copy the kit's own `.claude/settings.json`)
 - Add `docs/`, CLAUDE.md, CLAUDE.local.md, `.env` files
 - `sv create` includes Vitest + Playwright if selected during setup
 
@@ -1788,7 +1788,7 @@ After scaffold:
 **CLI scaffold:** `npx @angular/cli new PROJECT --style=scss --routing --ssr=false`
 
 After scaffold:
-- Copy `.claude/` — only commands with `scope: project` in frontmatter (skills, agents, hooks, settings.json copied in full)
+- Apply the starter-kit layer with `bash "$(pwd)/scripts/kit-apply.sh" "$PROJECT_PATH" --profile default` after CLAUDE.md and `.gitignore` exist and before the initial commit (never copy the kit's own `.claude/settings.json`)
 - Add `docs/`, CLAUDE.md, CLAUDE.local.md, `.env` files
 - Angular includes Jasmine by default — optionally add Vitest with `@analogjs/vitest-angular`
 - Add Playwright for E2E: `npm init playwright@latest`

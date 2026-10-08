@@ -82,28 +82,33 @@ ls -la ~/.claude/ 2>/dev/null || echo "NO_GLOBAL_DIR"
 
 ### 2C. ~/.claude/hooks/
 
+Only the **global hooks** are installed here. They are listed in `starter-kit-manifest.json` under `files.hooks.global` (block-secrets.py, verify-no-secrets.sh, check-rulecatch.sh) and are wired in `~/.claude/settings.json` (step 2B). The other hooks are per-project and are applied by `scripts/kit-apply.sh`, never installed globally.
+
 1. Create `~/.claude/hooks/` if it doesn't exist:
    ```bash
    mkdir -p ~/.claude/hooks
    ```
 
-2. Check if the project has hooks to install:
+2. Read the global hook list:
    ```bash
-   ls .claude/hooks/ 2>/dev/null
+   node -e 'console.log(require("./starter-kit-manifest.json").files.hooks.global.join("\n"))'
    ```
 
-3. For each hook file in the project's `.claude/hooks/`:
-   - If the file **already exists** at `~/.claude/hooks/` → **SKIP** (don't overwrite)
-   - If the file **does NOT exist** → **COPY** it
+3. For each global hook, compare the starter kit's `.claude/hooks/<name>` with `~/.claude/hooks/<name>`:
+   - **Missing** → COPY it
+   - **Identical** (`cmp -s`) → skip
+   - **Different** → show `diff -u ~/.claude/hooks/<name> .claude/hooks/<name>` and ASK the user which to keep. If they choose the kit version, save the old one as `~/.claude/hooks/<name>.bak` first. NEVER overwrite a differing hook silently: a global hook runs for every project, and the user may have customized it.
    - Make all hooks executable: `chmod +x ~/.claude/hooks/*`
 
 4. Report:
    ```
    Global hooks:
-     + block-secrets.py — installed
-     ✓ verify-no-secrets.sh — already exists, skipped
-     + lint-on-save.sh — installed
+     + check-rulecatch.sh — installed
+     ✓ verify-no-secrets.sh — identical, skipped
+     ~ block-secrets.py — differs from the kit; kept yours (kit version diff shown)
    ```
+
+**Why only three:** a project `settings.json` must not list these hooks. A missing global `python3` hook file exits with code 2, which blocks Read/Edit/Write in any environment without the global install (cloud sessions, other machines), and listing them in both places fires them twice.
 
 ## Step 3 — Verify Installation
 

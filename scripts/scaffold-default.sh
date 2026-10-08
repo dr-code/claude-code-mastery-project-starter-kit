@@ -28,7 +28,7 @@ if [ ! -d "$STARTER_KIT/.claude/commands" ]; then
 fi
 
 # ── Progress Tracking ──────────────────────────────────────────────────────────
-TOTAL_STEPS=15
+TOTAL_STEPS=12
 CURRENT=0
 START_NS=$(date +%s%N)
 
@@ -88,98 +88,6 @@ mkdir -p "$PROJECT_PATH"/scripts/queries
 mkdir -p "$PROJECT_PATH"/content
 mkdir -p "$PROJECT_PATH"/.github/workflows
 mkdir -p "$PROJECT_PATH"/public
-
-# ── Step 2: Copy 16 project-scoped commands ────────────────────────────────────
-progress "Copying 16 project commands..."
-for cmd in architecture commit create-api create-e2e diagram help \
-           optimize-docker progress refactor review security-check \
-           setup show-user-guide test-plan what-is-my-ai-doing worktree; do
-  cp "$STARTER_KIT/.claude/commands/${cmd}.md" "$PROJECT_PATH/.claude/commands/"
-done
-
-# ── Step 3: Copy skills, agents, ALL 9 hooks ──────────────────────────────────
-progress "Copying skills, agents, 9 hooks..."
-cp -r "$STARTER_KIT/.claude/skills/code-review" "$PROJECT_PATH/.claude/skills/"
-cp -r "$STARTER_KIT/.claude/skills/create-service" "$PROJECT_PATH/.claude/skills/"
-cp "$STARTER_KIT/.claude/agents/code-reviewer.md" "$PROJECT_PATH/.claude/agents/"
-cp "$STARTER_KIT/.claude/agents/test-writer.md" "$PROJECT_PATH/.claude/agents/"
-for hook in block-secrets.py lint-on-save.sh verify-no-secrets.sh \
-            check-rybbit.sh check-branch.sh check-ports.sh \
-            check-e2e.sh check-rulecatch.sh check-env-sync.sh; do
-  cp "$STARTER_KIT/.claude/hooks/${hook}" "$PROJECT_PATH/.claude/hooks/"
-done
-chmod +x "$PROJECT_PATH/.claude/hooks/"*.sh 2>/dev/null
-chmod +x "$PROJECT_PATH/.claude/hooks/"*.py 2>/dev/null
-
-# ── Step 4: Write settings.json (full 9-hook config) ──────────────────────────
-progress "Writing settings.json (9 hooks)..."
-cat > "$PROJECT_PATH/.claude/settings.json" << 'SETTINGS_EOF'
-{
-  "hooks": {
-    "PreToolUse": [
-      {
-        "matcher": "Read|Edit|Write",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3 .claude/hooks/block-secrets.py"
-          }
-        ]
-      },
-      {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash .claude/hooks/check-rybbit.sh"
-          },
-          {
-            "type": "command",
-            "command": "bash .claude/hooks/check-branch.sh"
-          },
-          {
-            "type": "command",
-            "command": "bash .claude/hooks/check-ports.sh"
-          },
-          {
-            "type": "command",
-            "command": "bash .claude/hooks/check-e2e.sh"
-          }
-        ]
-      }
-    ],
-    "PostToolUse": [
-      {
-        "matcher": "Write",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash .claude/hooks/lint-on-save.sh"
-          }
-        ]
-      }
-    ],
-    "Stop": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash .claude/hooks/verify-no-secrets.sh"
-          },
-          {
-            "type": "command",
-            "command": "bash .claude/hooks/check-rulecatch.sh"
-          },
-          {
-            "type": "command",
-            "command": "bash .claude/hooks/check-env-sync.sh"
-          }
-        ]
-      }
-    ]
-  }
-}
-SETTINGS_EOF
 
 # ── Step 4b: Create features.json (populated manifest) ────────────────────────
 CREATED_AT=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
@@ -1096,6 +1004,7 @@ playwright-report/
 _ai_temp/
 DI_EOF
 
+COMMAND_COUNT="$(node -e 'console.log(require(process.argv[1]).files.commands.length)' "$STARTER_KIT/starter-kit-manifest.json")"
 cat > "$PROJECT_PATH/README.md" << README_EOF
 # $PROJECT_NAME
 
@@ -1121,7 +1030,7 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ## Available Commands
 
-Run \`/help\` in Claude Code to see all 16 available commands.
+Run \`/help\` in Claude Code to see all ${COMMAND_COUNT} available commands.
 
 ## Scripts
 
@@ -1144,7 +1053,14 @@ Run \`/help\` in Claude Code to see all 16 available commands.
 | \`docs/DECISIONS.md\` | Architectural decisions |
 README_EOF
 
-# ── Step 15: Git init + pnpm install + register project ───────────────────────
+# ── Step 15: Starter-kit layer (commands, hooks, settings, blocks, tools) ──────
+# One shared engine applies the manifest. It installs Beacon / Plannotator / the
+# Tessera plugin if missing (set STARTER_KIT_SKIP_INSTALL=1 to disable) and runs
+# `tessera scan`, which must happen after CLAUDE.md and .gitignore exist.
+progress "Applying starter-kit layer (kit-apply.sh)..."
+KIT_APPLY_OUTPUT="$(bash "$STARTER_KIT/scripts/kit-apply.sh" "$PROJECT_PATH" --profile default)"
+
+# ── Step 16: Git init + pnpm install + register project ───────────────────────
 progress "Git init + pnpm install + registering project..."
 
 git -C "$PROJECT_PATH" init -q
@@ -1202,7 +1118,10 @@ echo "  Completed in ${TIME_STR}"
 echo "  Created at: $PROJECT_PATH"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
-echo "  ${FILE_COUNT} files  |  16 commands  |  2 skills  |  2 agents  |  9 hooks"
+echo "  ${FILE_COUNT} files  |  $(ls "$PROJECT_PATH/.claude/commands" | wc -l | tr -d ' ') commands  |  $(ls "$PROJECT_PATH/.claude/skills" | wc -l | tr -d ' ') skills  |  $(ls "$PROJECT_PATH/.claude/agents" | wc -l | tr -d ' ') agents  |  $(ls "$PROJECT_PATH/.claude/hooks" | wc -l | tr -d ' ') project hooks"
+echo ""
+echo "  Starter-kit layer (kit-apply.sh):"
+echo "$KIT_APPLY_OUTPUT" | sed 's/^/  /'
 echo ""
 echo "  Stack: Next.js + StrictDB + Tailwind + Docker"
 echo "  Testing: Vitest (unit) + Playwright (E2E)"

@@ -27,7 +27,7 @@ if [ ! -d "$STARTER_KIT/.claude/commands" ]; then
 fi
 
 # ── Progress Tracking ──────────────────────────────────────────────────────────
-TOTAL_STEPS=8
+TOTAL_STEPS=6
 CURRENT=0
 START_NS=$(date +%s%N)
 
@@ -78,65 +78,6 @@ progress "Creating directory structure..."
 mkdir -p "$PROJECT_PATH"/.claude/{commands,skills,agents,hooks}
 mkdir -p "$PROJECT_PATH"/docs
 mkdir -p "$PROJECT_PATH"/tests
-
-# ── Step 2: Copy 16 project-scoped commands ────────────────────────────────────
-progress "Copying 16 project commands..."
-for cmd in architecture commit create-api create-e2e diagram help \
-           optimize-docker progress refactor review security-check \
-           setup show-user-guide test-plan what-is-my-ai-doing worktree; do
-  cp "$STARTER_KIT/.claude/commands/${cmd}.md" "$PROJECT_PATH/.claude/commands/"
-done
-
-# ── Step 3: Copy skills, agents, hooks ─────────────────────────────────────────
-progress "Copying skills, agents, hooks..."
-cp -r "$STARTER_KIT/.claude/skills/code-review" "$PROJECT_PATH/.claude/skills/"
-cp -r "$STARTER_KIT/.claude/skills/create-service" "$PROJECT_PATH/.claude/skills/"
-cp "$STARTER_KIT/.claude/agents/code-reviewer.md" "$PROJECT_PATH/.claude/agents/"
-cp "$STARTER_KIT/.claude/agents/test-writer.md" "$PROJECT_PATH/.claude/agents/"
-cp "$STARTER_KIT/.claude/hooks/block-secrets.py" "$PROJECT_PATH/.claude/hooks/"
-cp "$STARTER_KIT/.claude/hooks/lint-on-save.sh" "$PROJECT_PATH/.claude/hooks/"
-cp "$STARTER_KIT/.claude/hooks/verify-no-secrets.sh" "$PROJECT_PATH/.claude/hooks/"
-
-# ── Step 4: Write settings.json (clean mode — 3 hooks only) ───────────────────
-progress "Writing settings.json..."
-cat > "$PROJECT_PATH/.claude/settings.json" << 'SETTINGS_EOF'
-{
-  "hooks": {
-    "PreToolUse": [
-      {
-        "matcher": "Read|Edit|Write",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3 .claude/hooks/block-secrets.py"
-          }
-        ]
-      }
-    ],
-    "PostToolUse": [
-      {
-        "matcher": "Write",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash .claude/hooks/lint-on-save.sh"
-          }
-        ]
-      }
-    ],
-    "Stop": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash .claude/hooks/verify-no-secrets.sh"
-          }
-        ]
-      }
-    ]
-  }
-}
-SETTINGS_EOF
 
 # ── Step 4b: Create features.json (empty manifest for clean mode) ─────────────
 cat > "$PROJECT_PATH/.claude/features.json" << 'FEATURES_EOF'
@@ -478,6 +419,7 @@ __pycache__/
 _ai_temp/
 DI_EOF
 
+COMMAND_COUNT="$(node -e 'console.log(require(process.argv[1]).files.commands.length)' "$STARTER_KIT/starter-kit-manifest.json")"
 cat > "$PROJECT_PATH/README.md" << README_EOF
 # $PROJECT_NAME
 
@@ -489,7 +431,7 @@ This project was created with **clean mode** — all Claude Code infrastructure 
 
 ## What's Included
 
-- \`.claude/\` — 16 slash commands, 2 skills, 2 agents, 3 hooks
+- \`.claude/\` — ${COMMAND_COUNT} slash commands, 2 skills, 2 agents, 1 project hook (lint-on-save)
 - \`docs/\` — Architecture, Infrastructure, and Decisions templates
 - \`tests/\` — Test checklist and issue tracking templates
 - \`CLAUDE.md\` — Security rules only (no coding opinions)
@@ -497,7 +439,7 @@ This project was created with **clean mode** — all Claude Code infrastructure 
 
 ## Available Commands
 
-Run \`/help\` in Claude Code to see all 16 available commands.
+Run \`/help\` in Claude Code to see all ${COMMAND_COUNT} available commands.
 
 ## Project Documentation
 
@@ -508,7 +450,13 @@ Run \`/help\` in Claude Code to see all 16 available commands.
 | \`docs/DECISIONS.md\` | Architectural decisions |
 README_EOF
 
-# ── Step 8: Git init + register project ───────────────────────────────────────
+# ── Step 8: Starter-kit layer (commands, hooks, settings, blocks, tools) ───────
+# Shared engine; see scripts/kit-apply.sh. Set STARTER_KIT_SKIP_INSTALL=1 to
+# disable tool installs. Must run after CLAUDE.md and .gitignore exist.
+progress "Applying starter-kit layer (kit-apply.sh)..."
+KIT_APPLY_OUTPUT="$(bash "$STARTER_KIT/scripts/kit-apply.sh" "$PROJECT_PATH" --profile clean)"
+
+# ── Step 9: Git init + register project ───────────────────────────────────────
 progress "Initializing git + registering project..."
 
 git -C "$PROJECT_PATH" init -q
@@ -563,7 +511,10 @@ echo "  Completed in ${TIME_STR}"
 echo "  Created at: $PROJECT_PATH"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
-echo "  ${FILE_COUNT} files  |  16 commands  |  2 skills  |  2 agents  |  3 hooks"
+echo "  ${FILE_COUNT} files  |  $(ls "$PROJECT_PATH/.claude/commands" | wc -l | tr -d ' ') commands  |  $(ls "$PROJECT_PATH/.claude/skills" | wc -l | tr -d ' ') skills  |  $(ls "$PROJECT_PATH/.claude/agents" | wc -l | tr -d ' ') agents  |  $(ls "$PROJECT_PATH/.claude/hooks" | wc -l | tr -d ' ') project hooks"
+echo ""
+echo "  Starter-kit layer (kit-apply.sh):"
+echo "$KIT_APPLY_OUTPUT" | sed 's/^/  /'
 echo ""
 echo "  Next steps:"
 echo "    cd $PROJECT_PATH"

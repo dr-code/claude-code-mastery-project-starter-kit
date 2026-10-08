@@ -81,7 +81,7 @@ Use `/help` to see all 27 commands at any time.
 | | |
 |---|---|
 | ![/help command](docs/screenshots/help-command.png) | ![/review violations](docs/screenshots/review-violations.png) |
-| **`/help`** &mdash; All 26 commands | **`/review`** &mdash; Catching violations with severity ratings |
+| **`/help`** &mdash; All 27 commands | **`/review`** &mdash; Catching violations with severity ratings |
 | ![Auto-branch hook](docs/screenshots/auto-branch.png) | ![Lint-on-save hook](docs/screenshots/hooks-lint-on-save.png) |
 | **Auto-Branching** &mdash; Hook blocks commits to main | **Lint-on-Save** &mdash; TypeScript errors caught instantly |
 | ![/diagram architecture](docs/screenshots/diagram-architecture.png) | ![/setup flow](docs/screenshots/setup-flow.png) |

@@ -1162,21 +1162,21 @@ cat claude-mastery-project.conf
 - [ ] `help.md` does NOT list `/set-clean-as-default` or `/reset-to-defaults`
 - [ ] `help.md` dynamically detects context (starter kit vs project) and adjusts command count
 - [ ] `CLAUDE.md` quick reference has all new commands (including `/projects-created`, `/remove-project`, `/convert-project-to-starter-kit`)
-- [ ] `README.md` says "26 Slash Commands" and lists all new commands
-- [ ] `docs/index.html` says "26 Slash Commands" and has command cards for all new commands
+- [ ] `README.md` says "27 Slash Commands" and lists all new commands
+- [ ] `docs/index.html` says "27 Slash Commands" and has command cards for all new commands
 - [ ] "Supported Technologies" section in README.md
 - [ ] "Supported Technologies" section in docs/index.html
 - [ ] Project structure trees in README.md and docs/index.html include `projects-created.md`, `remove-project.md`, and `convert-project-to-starter-kit.md`
 
 ### 18.7 Command Scope Classification
 
-- [ ] All 26 commands have `scope:` in YAML frontmatter (`grep -c "^scope:" .claude/commands/*.md` returns 26)
-- [ ] 16 commands have `scope: project` (`grep -l "^scope: project" .claude/commands/*.md | wc -l`)
+- [ ] All 27 commands have `scope:` in YAML frontmatter (`grep -c "^scope:" .claude/commands/*.md` returns 26)
+- [ ] 17 commands have `scope: project` (`grep -l "^scope: project" .claude/commands/*.md | wc -l`)
 - [ ] 10 commands have `scope: starter-kit` (`grep -l "^scope: starter-kit" .claude/commands/*.md | wc -l`)
 - [ ] `new-project.md` has `scope: starter-kit` (not copied to projects)
 - [ ] `help.md` has `scope: project` (copied to projects)
 - [ ] `show-user-guide.md` has `scope: project` (opens GitHub Pages URL, works anywhere)
-- [ ] `new-project.md` clean mode tree lists only `scope: project` commands (16 files)
+- [ ] `new-project.md` clean mode tree lists only `scope: project` commands (17 files)
 - [ ] `new-project.md` clean mode tree does NOT include `new-project.md`
 - [ ] `new-project.md` step 3 says "only commands with `scope: project`"
 - [ ] `convert-project-to-starter-kit.md` step 4 filters by `scope: project`

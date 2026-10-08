@@ -11,14 +11,28 @@
     ],
     "skills": ["code-review", "create-service"],
     "agents": ["code-reviewer", "test-writer"],
-    "hooks": [
-      "block-secrets.py", "lint-on-save.sh", "verify-no-secrets.sh",
-      "check-rybbit.sh", "check-branch.sh", "check-ports.sh",
-      "check-e2e.sh", "check-rulecatch.sh", "check-env-sync.sh"
-    ]
+    "hooks": {
+      "project": [
+        "lint-on-save.sh", "check-rybbit.sh", "check-branch.sh",
+        "check-ports.sh", "check-e2e.sh", "check-env-sync.sh"
+      ],
+      "global": ["block-secrets.py", "verify-no-secrets.sh", "check-rulecatch.sh"]
+    },
+    "hookWiring": "project hooks are copied into each project's .claude/hooks and wired in its settings.json. global hooks are installed to ~/.claude/hooks by /install-global and wired ONLY in ~/.claude/settings.json; project settings.json must not list them (a missing python3 hook file exits 2 and blocks tools, and listing them twice fires them twice). Plannotator hooks are owned by the tessera plugin and must not appear in any settings.json."
   },
 
-  "gitignore": [".mdd/", ".tessera/"],
+  "profiles": {
+    "default": {
+      "hooks": "files.hooks.project",
+      "settingsTemplate": "templates/project-settings.json"
+    },
+    "clean": {
+      "hooks": ["lint-on-save.sh"],
+      "settingsTemplate": "templates/project-settings.clean.json"
+    }
+  },
+
+  "gitignore": [".mdd/", ".tessera/", ".mcp.json"],
 
   "managedBlocks": [
     {
