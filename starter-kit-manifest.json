@@ -1,0 +1,65 @@
+{
+  "manifestVersion": 1,
+  "description": "Single source of truth for what every starter-kit project contains. Read by /new-project, scaffold-default.sh, and /update-project.",
+
+  "files": {
+    "commands": [
+      "architecture", "commit", "create-api", "create-e2e", "diagram", "help",
+      "mdd", "optimize-docker", "progress", "refactor", "review",
+      "security-check", "setup", "show-user-guide", "test-plan",
+      "what-is-my-ai-doing", "worktree"
+    ],
+    "skills": ["code-review", "create-service"],
+    "agents": ["code-reviewer", "test-writer"],
+    "hooks": [
+      "block-secrets.py", "lint-on-save.sh", "verify-no-secrets.sh",
+      "check-rybbit.sh", "check-branch.sh", "check-ports.sh",
+      "check-e2e.sh", "check-rulecatch.sh", "check-env-sync.sh"
+    ]
+  },
+
+  "gitignore": [".mdd/", ".tessera/"],
+
+  "managedBlocks": [
+    {
+      "id": "workflow",
+      "owner": "starter-kit",
+      "target": "CLAUDE.md",
+      "source": "templates/claude-blocks/workflow.md",
+      "startMarker": "<!-- STARTER-KIT:WORKFLOW:START",
+      "endMarker": "<!-- STARTER-KIT:WORKFLOW:END -->",
+      "rule": "Replace everything between the markers. If absent, append at the end of the file. Never touch text outside the markers."
+    },
+    {
+      "id": "tessera-policy",
+      "owner": "tessera",
+      "target": "CLAUDE.md",
+      "startMarker": "<!-- TESSERA:START",
+      "endMarker": "<!-- TESSERA:END -->",
+      "rule": "Not written by the kit. Refreshed by calling graph_scan on the project root, which injects the block."
+    }
+  ],
+
+  "globalTools": [
+    {
+      "id": "beacon",
+      "check": "test -d \"$HOME/.claude/beacon-tasks\"",
+      "install": "curl -fsSL https://raw.githubusercontent.com/dr-code/beacon/main/install.sh | bash",
+      "after": "Run the beacon skill-discovery step for the project profile."
+    },
+    {
+      "id": "plannotator",
+      "check": "command -v plannotator >/dev/null 2>&1",
+      "install": "curl -fsSL https://plannotator.ai/install.sh | bash"
+    },
+    {
+      "id": "tessera-plugin",
+      "check": "grep -q '\"tessera@' \"$HOME/.claude/plugins/installed_plugins.json\"",
+      "install": "claude plugin marketplace add dr-code/tessera && claude plugin install tessera@tessera",
+      "conflictsWith": {
+        "check": "grep -q '\"plannotator@' \"$HOME/.claude/plugins/installed_plugins.json\"",
+        "reason": "Standalone Plannotator plus the Tessera plugin duplicates ExitPlanMode hooks (tessera ADR-003). Warn and skip install instead of stacking."
+      }
+    }
+  ]
+}
