@@ -107,7 +107,7 @@ function processLists(html: string): string {
   for (const line of lines) {
     const match = line.match(/^(\s*)- (.*)$/);
     if (match) {
-      const content = processInlineFormatting(match[2]);
+      const content = processInlineFormatting(match[2] ?? '');
       if (!inList) {
         result.push('<ul>');
         inList = true;
@@ -138,7 +138,7 @@ function processOrderedLists(html: string): string {
         result.push('<ol>');
         inList = true;
       }
-      result.push(`<li>${processInlineFormatting(match[1])}</li>`);
+      result.push(`<li>${processInlineFormatting(match[1] ?? '')}</li>`);
     } else {
       if (inList) {
         result.push('</ol>');

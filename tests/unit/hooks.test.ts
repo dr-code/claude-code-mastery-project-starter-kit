@@ -91,8 +91,8 @@ describe('Hook wiring in settings.json', () => {
   it('lint-on-save should fire on both Write and Edit', () => {
     const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
     const postToolUse = settings.hooks.PostToolUse;
-    const lintHook = postToolUse.find((h: { matcher: string }) =>
-      h.hooks?.some((hook: { command: string }) => hook.command?.includes('lint-on-save')),
+    const lintHook = postToolUse.find((h: { matcher: string; hooks?: { command?: string }[] }) =>
+      h.hooks?.some((hook) => hook.command?.includes('lint-on-save')),
     );
     expect(lintHook).toBeDefined();
     expect(lintHook.matcher).toContain('Write');

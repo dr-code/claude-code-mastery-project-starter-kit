@@ -455,7 +455,7 @@ file and continue from where you left off.</code></pre>
           </div>
           <div class="check-before-card">
             <h4>B. Convert an Existing Project</h4>
-            <p>Already have a project? Run <code>/convert-project-to-starter-kit ~/projects/my-app</code> to non-destructively merge all starter kit infrastructure into it. Preserves everything you have, adds what's missing. Undo with <code>git revert HEAD</code>.</p>
+            <p>Already have a project? Run <code>/convert-project-to-starter-kit ~/projects/my-app</code> to non-destructively apply the starter-kit layer to it on a new branch. Preserves everything you have, adds what's missing. Undo by deleting the branch.</p>
           </div>
           <div class="check-before-card">
             <h4>C. Customize the Template</h4>
@@ -1375,16 +1375,17 @@ npx @rulecatch/ai-pooler monitor --no-api-key</code></pre>
 
           <div class="command-card">
             <h3><code>/convert-project-to-starter-kit</code></h3>
-            <p class="command-desc">Merges all starter kit infrastructure into an existing project without destroying anything. Creates a safety commit, detects language and existing Claude setup, asks how to handle conflicts, then copies commands, hooks, skills, agents, merges CLAUDE.md sections, deep-merges settings.json, and adds infrastructure files. Registers the project in <code>~/.claude/starter-kit-projects.json</code>. Undo with <code>git revert HEAD</code>.</p>
+            <p class="command-desc">Applies the starter-kit layer to an existing project without destroying anything. Requires a clean working tree, works on a new <code>chore/starter-kit-convert-*</code> branch, detects language and existing Claude setup, asks how to handle conflicts, then uses the shared engine to copy commands, hooks, skills, and agents, generate or extend <code>settings.json</code>, and add managed <code>CLAUDE.md</code> blocks. Registers the project in <code>~/.claude/starter-kit-projects.json</code>. Undo by deleting the branch.</p>
             <pre class="language-bash"><code class="language-bash">/convert-project-to-starter-kit ~/projects/my-app
 /convert-project-to-starter-kit ~/projects/my-app --force</code></pre>
           </div>
 
           <div class="command-card">
             <h3><code>/update-project</code></h3>
-            <p class="command-desc">Updates an existing starter-kit project with the latest commands, hooks, skills, agents, and rules. Smart merge &mdash; replaces starter kit files with newer versions while preserving any custom files. Shows a diff report before applying, creates a safety commit for easy undo.</p>
-            <pre class="language-bash"><code class="language-bash">/update-project              # Pick from registered projects
-/update-project --force      # Skip confirmation prompts</code></pre>
+            <p class="command-desc">Brings one or many existing projects up to the current starter-kit layer. Dry-run report first, custom files never touched, changes on a new <code>chore/starter-kit-sync-*</code> branch; projects with uncommitted changes are skipped.</p>
+            <pre class="language-bash"><code class="language-bash">/update-project ~/projects/my-app   # One project (registered automatically)
+/update-project --all               # Every registered project
+/update-project --dry-run --all     # Report only, change nothing</code></pre>
           </div>
 
           <div class="command-card">

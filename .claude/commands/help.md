@@ -48,7 +48,7 @@ KIT MANAGEMENT (starter kit only — not copied to projects)
   /projects-created  List all projects created by the starter kit with creation dates
   /remove-project    Remove a project from the registry and optionally delete it from disk
   /convert-project-to-starter-kit  Merge starter kit into an existing project (non-destructive)
-  /update-project    Update a starter-kit project with the latest commands, hooks, and rules
+  /update-project    Bring projects up to the latest starter-kit layer (path, --all, --scan, --dry-run)
   /update-project --clean  Remove starter-kit-scoped commands from a project
 
 CODE QUALITY

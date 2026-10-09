@@ -10,11 +10,15 @@ if ! git rev-parse --is-inside-work-tree &>/dev/null 2>&1; then
     exit 0
 fi
 
-# Check if there are staged files
-STAGED=$(git diff --cached --name-only 2>/dev/null)
-if [ -z "$STAGED" ]; then
+# Check if there are staged files (any status)
+STAGED_ALL=$(git diff --cached --name-only 2>/dev/null)
+if [ -z "$STAGED_ALL" ]; then
     exit 0
 fi
+
+# Only additions and modifications for filename + content checks.
+# Deletions are never a secret risk — the file is being removed, not added.
+STAGED=$(git diff --cached --diff-filter=AM --name-only 2>/dev/null)
 
 VIOLATIONS=""
 

@@ -38,8 +38,8 @@ Check for `--force` flag in `$ARGUMENTS`. If present, set `$FORCE=true` (skips c
 ### Validations (all must pass — stop with clear error if any fail)
 
 1. `$TARGET` directory exists → if not: "Directory not found: $TARGET"
-2. `$TARGET` is a git repo → run: `git -C "$TARGET" rev-parse --is-inside-work-tree 2>/dev/null`
-   - If not a git repo: "This project must be a git repo. Run `git init && git commit --allow-empty -m 'init'` first."
+2. Check whether `$TARGET` is a git repo: `git -C "$TARGET" rev-parse --is-inside-work-tree 2>/dev/null`
+   - If not a git repo: continue in **backup mode** (see Step 1). Never run `git init` for the user: a baseline `git add -A` could stage `node_modules`, build output, or secrets.
 3. `$TARGET` is NOT the starter kit itself (compare resolved paths of `$SOURCE` and `$TARGET`)
    - If same: "Cannot convert the starter kit itself. Provide the path to an existing project."
 4. `$SOURCE` has expected starter kit files (`claude-mastery-project.conf` + `.claude/commands/new-project.md`)
@@ -47,33 +47,24 @@ Check for `--force` flag in `$ARGUMENTS`. If present, set `$FORCE=true` (skips c
 
 ---
 
-## Step 1 — Safety Commit (MANDATORY)
+## Step 1 — Pre-flight and Safety (MANDATORY)
+
+Conversion never commits work it did not make, and never changes the project's current branch.
 
 ```bash
-cd "$TARGET"
-git status --porcelain
-```
-
-**Check commit count first:**
-```bash
+git -C "$TARGET" rev-parse --is-inside-work-tree 2>/dev/null
+git -C "$TARGET" status --porcelain
 git -C "$TARGET" rev-list --count HEAD 2>/dev/null
+git -C "$TARGET" symbolic-ref -q --short HEAD
 ```
 
-- **If zero commits (fresh repo):** Warn the user: "This repo has no commits. We can't create a safety snapshot. Continue anyway?" via AskUserQuestion. If they say no, stop.
-
-- **If uncommitted changes exist** (git status --porcelain has output):
-  ```bash
-  cd "$TARGET" && git add -A && git commit -m "chore: pre-conversion snapshot (before starter kit merge)"
-  ```
-
-- **If clean with history** (no uncommitted changes, has commits):
-  ```bash
-  cd "$TARGET" && git commit --allow-empty -m "chore: pre-conversion marker (before starter kit merge)"
-  ```
-
-Store the hash: `PRE_CONVERT_HASH=$(git -C "$TARGET" rev-parse HEAD)`
-
-**STOP if git fails** (except "nothing to commit" which is fine — treat as clean).
+| State | Action |
+|-------|--------|
+| Git repo, clean, has commits, on a branch | Remember `ORIGINAL_BRANCH`. Create the conversion branch: `git -C "$TARGET" switch -c chore/starter-kit-convert-$(date +%Y%m%d)`. All changes go there. |
+| Git repo, **uncommitted changes** | **STOP.** "N uncommitted files. Commit or stash them first, then re-run." Do not commit, stash, or reset for the user. |
+| Git repo, zero commits | Warn: "No commits, so there is no safety snapshot. Continue anyway?" via AskUserQuestion; stop on no. |
+| Git repo, detached HEAD | Stop: "Check out a branch first." |
+| **Not a git repo** | Backup mode: `BACKUP_DIR=~/.claude/starter-kit-backups/<name>-<YYYYMMDD-HHMMSS>`. Require confirmation even with `--force`: "No git history here. Files will be backed up to `$BACKUP_DIR` before any change." |
 
 ---
 
@@ -165,12 +156,12 @@ Only ask about categories where the target has existing files. Use AskUserQuesti
 **Batch 2 (if applicable):**
 
 **Q5: CLAUDE.md** (only if target has existing CLAUDE.md)
-- "Your project has a CLAUDE.md. Merge starter kit sections into it?"
-  - Yes, merge section by section — adds missing sections, keeps yours (Recommended)
+- "Your project has a CLAUDE.md. Add the managed starter-kit workflow block (Superpowers + Plannotator) and let Tessera add its policy block? Nothing outside those two marked blocks is changed."
+  - Yes, add the managed blocks (Recommended)
   - No, leave my CLAUDE.md untouched
 
 **Q6: settings.json** (only if target has existing `.claude/settings.json`)
-- "Your project has a .claude/settings.json. Merge starter kit hooks into it?"
+- "Your project has a .claude/settings.json. Add the starter-kit project hooks to it? Hooks you already have are kept; a hook already wired through ~/.claude/hooks is moved to the project-local path instead of being added twice."
   - Yes, add missing hooks — keeps yours (Recommended)
   - No, leave it untouched
 
@@ -190,62 +181,44 @@ Store each answer. Default for `--force`: "keep mine, add missing" for all categ
 
 ---
 
-## Step 4 — Merge .claude/ Directory
+## Step 4 — Apply the Starter-Kit Layer (shared engine)
 
-### Create directories
+All of the file copying, `settings.json` generation, `.gitignore` entries, and managed `CLAUDE.md` blocks are done by `$SOURCE/scripts/kit-apply.sh`, the same engine `/new-project` and `/update-project` use, so a converted project ends up identical to a new one.
 
-```bash
-mkdir -p "$TARGET/.claude/commands"
-mkdir -p "$TARGET/.claude/hooks"
-mkdir -p "$TARGET/.claude/skills"
-mkdir -p "$TARGET/.claude/agents"
-```
-
-### Copy files per category
-
-For each category (commands, hooks, skills, agents), iterate through the source files:
-
-**For commands:** List all `$SOURCE/.claude/commands/*.md` files that have `scope: project` in their YAML frontmatter. Skip any commands with `scope: starter-kit` — those are kit-management commands that don't belong in project repos.
-**For hooks:** List all `$SOURCE/.claude/hooks/*.sh` and `$SOURCE/.claude/hooks/*.py` files.
-**For skills:** List all `$SOURCE/.claude/skills/*/` directories (copy entire directory).
-**For agents:** List all `$SOURCE/.claude/agents/*.md` files.
-
-For each file/directory:
-
-- File does NOT exist in target → **COPY** it. Increment `$ADDED`.
-- File EXISTS + strategy is "keep mine, add missing" → **SKIP**. Increment `$SKIPPED`.
-- File EXISTS + strategy is "replace all" → **OVERWRITE** (copy with force). Increment `$REPLACED`.
-- File EXISTS + strategy is "choose file by file" → Show the filename and ask via AskUserQuestion: "File `<name>` exists in both. Keep yours or use starter kit version?" Options: Keep mine / Use starter kit. Act accordingly.
-
-### Make hooks executable
+First preview it:
 
 ```bash
-chmod +x "$TARGET/.claude/hooks/"*.sh 2>/dev/null
-chmod +x "$TARGET/.claude/hooks/"*.py 2>/dev/null
+bash "$SOURCE/scripts/kit-apply.sh" "$TARGET" --dry-run
 ```
 
-### Merge settings.json
+Then map the Step 3 answers to flags and run it for real:
 
-**If target has no `.claude/settings.json`:** Copy `$SOURCE/.claude/settings.json` directly.
+| Answer | Flag |
+|--------|------|
+| Commands, hooks, skills, agents: all "keep mine, add missing" | `--no-overwrite` |
+| All "replace with starter kit versions" | (no flag) |
+| Mixed answers | run with `--no-overwrite`, then copy the files from `$SOURCE` for the categories (or individual files) the user chose to replace |
+| CLAUDE.md: "leave untouched" | `--skip-claude-md` (also skips the Tessera scan, which edits CLAUDE.md) |
+| settings.json: "leave untouched" | not supported by the engine: tell the user their `settings.json` will receive only additive hook entries, or stop and let them decide |
+| Clean/no-language project (`$LANGUAGE` none) | `--profile clean` |
+| Non-git backup mode | `--backup-dir "$BACKUP_DIR"` |
 
-**If target has `.claude/settings.json` and user said "yes, merge":**
+```bash
+bash "$SOURCE/scripts/kit-apply.sh" "$TARGET" [--no-overwrite] [--skip-claude-md] [--profile clean] [--backup-dir "$BACKUP_DIR"]
+```
 
-1. Read both files as JSON
-2. For `permissions.deny`: merge arrays — add entries from source that are missing in target (deduplicate by value)
-3. For each hook event type (`PreToolUse`, `PostToolUse`, `Stop`):
-   - For each matcher entry in source: check if target already has same matcher string
-   - Same matcher → merge the `hooks` arrays (deduplicate by `command` string)
-   - New matcher → add entire entry to target
-4. NEVER remove existing entries from target
-5. Write the merged result to `$TARGET/.claude/settings.json`
+What the engine does, so you can report it accurately:
+- Copies the kit-owned commands, skills, agents, and project hooks listed in `starter-kit-manifest.json`. Files that are not in the manifest (the project's own) are never touched. The 3 global hooks (block-secrets, verify-no-secrets, check-rulecatch) are NOT copied into the project; they come from `/install-global`.
+- Writes `.claude/settings.json` from `templates/project-settings*.json`, or, if one exists, only adds missing hooks. It never copies the kit's own `settings.json`. Hooks owned globally or by the Tessera plugin are reported if present (add `--fix-settings` to remove them when their replacement is verified).
+- Adds `.mdd/`, `.tessera/` and `.mcp.json` to `.gitignore`.
+- Adds or refreshes the workflow block in `CLAUDE.md` between its markers, then runs `tessera scan`, which adds the Tessera policy block.
+- Checks Beacon, Plannotator and the Tessera plugin and installs what is missing (set `STARTER_KIT_SKIP_INSTALL=1` to only report).
 
-**If user said "no, leave untouched":** Skip.
-
-Track and display counts: `ADDED`, `SKIPPED`, `REPLACED` per category.
+Track and display the engine's per-category counts (`new`, `updated`, `unchanged`, `kept`, `custom`).
 
 ---
 
-## Step 5 — Merge CLAUDE.md
+## Step 5 — CLAUDE.md
 
 ### If target has no CLAUDE.md
 
@@ -288,36 +261,11 @@ Create a minimal CLAUDE.md with security-only rules (safe for any project type):
 
 Report: `+ CLAUDE.md created (security-only rules)`
 
-### If target has CLAUDE.md and user said "yes, merge"
+### If target has CLAUDE.md and user said "yes, add the managed blocks"
 
-Parse the starter kit CLAUDE.md and the target CLAUDE.md by `## ` (h2) section headers.
+Nothing to do here: Step 4 already inserted the workflow block between its `STARTER-KIT:WORKFLOW` markers and `tessera scan` added the Tessera policy block between its `TESSERA` markers. Do NOT append sections from the starter kit's own `CLAUDE.md`: that file describes the kit repository, not a project template. Everything outside the two marked blocks is left exactly as it was.
 
-The starter kit CLAUDE.md sections to check:
-- `Quick Reference — Scripts`
-- `Critical Rules`
-- `When Something Seems Wrong`
-- `Windows Users`
-- `Service Ports`
-- `Project Structure`
-- `Project Documentation`
-- `Coding Standards`
-- `Naming — NEVER Rename Mid-Project`
-- `Plan Mode — Plan First, Code Second`
-- `Documentation Sync`
-- `CLAUDE.md Is Team Memory`
-- `Workflow Preferences`
-
-For each section:
-- Normalize comparison: lowercase, strip dashes/extra spaces
-- If a section with similar header exists in target → **SKIP**
-- If missing → **APPEND** the entire section to the end of target's CLAUDE.md
-
-**Special: Critical Rules sub-merge:**
-If the target already has a "Critical Rules" section, parse both by `### ` (h3) sub-headers. For each numbered rule in the starter kit (Rule 0 through Rule 10):
-- If the target has a sub-section with the same rule number → **SKIP**
-- If missing → **APPEND** that rule sub-section inside the existing Critical Rules section
-
-Report each section: `skipped (exists)` or `+ added`
+Report: `+ workflow block <added|updated|unchanged>`, `+ Tessera policy block <added|updated>`.
 
 ### If user said "no, leave untouched"
 
@@ -432,12 +380,12 @@ Report each file: `+ copied`, `merged (N lines added)`, or `skipped (exists)`
 ### Go (if `$LANGUAGE` is Go and user opted in)
 
 - Check if target CLAUDE.md has a Go coding standards section (search for "Go" + "golangci" or "go.mod")
-- If missing → append the Go coding standards section from the starter kit CLAUDE.md
+- If missing → append the "Go Rules" section from `$SOURCE/.claude/commands/new-project.md` (Go mode)
 
 ### Python (if `$LANGUAGE` is Python and user opted in)
 
 - Check if target CLAUDE.md has a Python coding standards section (search for "Python" + "pytest" or "pyproject")
-- If missing → append the Python coding standards section from the starter kit CLAUDE.md
+- If missing → append the "Python Rules" section from `$SOURCE/.claude/commands/new-project.md` (Python mode)
 
 ---
 
@@ -538,15 +486,17 @@ Commands:      N added, N skipped, N replaced
 Hooks:         N added, N skipped, N replaced
 Skills:        N added, N skipped, N replaced
 Agents:        N added, N skipped, N replaced
-CLAUDE.md:     N sections added, N skipped (or: created with security rules)
-settings.json: deep merged / copied / skipped
+CLAUDE.md:     workflow block + Tessera policy block added (or: created with security rules / left untouched)
+settings.json: generated from template / hooks added / path(s) migrated / left untouched
 Infrastructure: N files added, N merged, N skipped
 
-Pre-conversion commit: $PRE_CONVERT_HASH
-Conversion commit:     $CONVERT_HASH
+Branch:             chore/starter-kit-convert-YYYYMMDD   (was on: $ORIGINAL_BRANCH)
+Conversion commit:  $CONVERT_HASH
 
-To undo: git revert HEAD
-To review: git diff $PRE_CONVERT_HASH..HEAD
+To review: git diff $ORIGINAL_BRANCH..HEAD
+To accept: git switch $ORIGINAL_BRANCH && git merge <branch>
+To undo:   git switch $ORIGINAL_BRANCH && git branch -D <branch>
+(Backup mode: files were saved to $BACKUP_DIR; copy any file back from there to restore it.)
 
 Registered in project registry. View with /projects-created.
 
