@@ -179,7 +179,8 @@ done
 # block-secrets, verify-no-secrets and check-rulecatch are wired globally in
 # ~/.claude/settings.json; Plannotator hooks come from the tessera plugin. Listing
 # either here would fire them twice, and a missing global python hook exits 2,
-# which blocks Read/Edit/Write.
+# which blocks Read/Edit/Write. Project hooks use bash "${CLAUDE_PROJECT_DIR}"/.claude/hooks/x so
+# they run from any subfolder (a relative path fails there with exit 127).
 SETTINGS_TEMPLATE="$STARTER_KIT/$(manifest_value "profiles.${PROFILE}.settingsTemplate")"
 SETTINGS_PATH="$PROJECT_DIR/.claude/settings.json"
 
@@ -221,30 +222,47 @@ SETTINGS_OUT="$(KIT_REMOVABLE="$REMOVABLE_JSON" KIT_GLOBAL_NAMES="$GLOBAL_NAMES_
   }
   const s = JSON.parse(fs.readFileSync(target, "utf8"));
   s.hooks = s.hooks || {};
-  const has = (groups, cmd) => groups.some(g => (g.hooks || []).some(h => h.command === cmd));
-  // The same hook script wired under a different path (for example ~/.claude/hooks/x
-  // instead of .claude/hooks/x) is the same hook: migrate it, never add a second copy.
+  // A kit hook is identified by its script name. If the project already wires the same
+  // script under another path form (relative .claude/hooks/x, or ~/.claude/hooks/x) it is
+  // the same hook: rewrite it to the template command instead of adding a second copy.
+  // If it sits under a different matcher than the template (for example lint-on-save under
+  // "Write" instead of "Write|Edit") it is moved to the template matcher.
   const scriptName = (cmd) => { const m = /hooks\/([\w.-]+)\s*$/.exec(cmd || ""); return m ? m[1] : null; };
   const findByScript = (groups, name) => {
-    for (const g of groups) for (const h of (g.hooks || [])) if (name && scriptName(h.command) === name) return h;
+    for (const g of groups) for (const h of (g.hooks || [])) if (name && scriptName(h.command) === name) return { group: g, hook: h };
     return null;
+  };
+  const groupFor = (groups, matcher) => {
+    let grp = groups.find(x => (x.matcher || "") === (matcher || ""));
+    if (!grp) {
+      grp = matcher ? { matcher, hooks: [] } : { hooks: [] };
+      groups.push(grp);
+    }
+    return grp;
   };
   let added = 0;
   let migrated = 0;
+  let relocated = 0;
   for (const [event, groups] of Object.entries(t.hooks)) {
     s.hooks[event] = s.hooks[event] || [];
     for (const g of groups) {
       for (const h of g.hooks) {
-        if (has(s.hooks[event], h.command)) continue;
-        const same = findByScript(s.hooks[event], scriptName(h.command));
-        if (same) { same.command = h.command; migrated++; continue; }
-        let grp = s.hooks[event].find(x => (x.matcher || "") === (g.matcher || ""));
-        if (!grp) {
-          grp = g.matcher ? { matcher: g.matcher, hooks: [] } : { hooks: [] };
-          s.hooks[event].push(grp);
+        const hit = findByScript(s.hooks[event], scriptName(h.command));
+        if (!hit) {
+          groupFor(s.hooks[event], g.matcher).hooks.push(h);
+          added++;
+          continue;
         }
-        grp.hooks.push(h);
-        added++;
+        if (hit.hook.command !== h.command) {
+          hit.hook.command = h.command;
+          migrated++;
+        }
+        if ((hit.group.matcher || "") !== (g.matcher || "")) {
+          hit.group.hooks = hit.group.hooks.filter(x => x !== hit.hook);
+          groupFor(s.hooks[event], g.matcher).hooks.push(hit.hook);
+          s.hooks[event] = s.hooks[event].filter(x => (x.hooks || []).length > 0);
+          relocated++;
+        }
       }
     }
   }
@@ -275,11 +293,12 @@ SETTINGS_OUT="$(KIT_REMOVABLE="$REMOVABLE_JSON" KIT_GLOBAL_NAMES="$GLOBAL_NAMES_
       kept.push(...redundant);
     }
   }
-  const changed = added > 0 || migrated > 0 || removed.length > 0;
+  const changed = added > 0 || migrated > 0 || relocated > 0 || removed.length > 0;
   if (changed) write(s);
   const parts = [];
   if (added > 0) parts.push((dry ? "would add " : "added ") + added + " hook(s)");
-  if (migrated > 0) parts.push((dry ? "would migrate " : "migrated ") + migrated + " hook path(s) to the project-local .claude/hooks");
+  if (migrated > 0) parts.push((dry ? "would migrate " : "migrated ") + migrated + " hook command(s) to the CLAUDE_PROJECT_DIR form");
+  if (relocated > 0) parts.push((dry ? "would move " : "moved ") + relocated + " hook(s) to the template matcher");
   if (removed.length) parts.push((dry ? "would remove " : "removed ") + removed.length + " redundant (" + removed.join(" | ") + ")");
   if (kept.length) parts.push((fix ? "KEPT, replacement not verified: " : "WARNING globally-owned hooks listed here (run with --fix-settings once verified): ") + kept.join(" | "));
   console.log((changed ? "CHANGE " : "OK ") + (parts.length ? parts.join("; ") : "already up to date"));

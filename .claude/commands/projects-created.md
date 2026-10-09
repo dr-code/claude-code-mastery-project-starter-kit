@@ -12,7 +12,7 @@ List every project that was scaffolded by `/new-project`, with creation date, pr
 
 ### 1. Read the registry
 
-Read `~/.claude/starter-kit-projects.json`. If the file does not exist, tell the user:
+Run `node scripts/registry.mjs list --json` from the starter kit folder (it reads `~/.claude/starter-kit-projects.json`; see the note below). An empty list means no projects are registered; tell the user:
 
 > No projects have been created yet. Use `/new-project my-app` to scaffold your first project.
 
@@ -20,7 +20,7 @@ And stop.
 
 ### 2. Parse and validate
 
-The registry format is:
+The registry is stored in this canonical format (the tool repairs older shapes automatically):
 
 ```json
 {
@@ -73,7 +73,7 @@ If the registry exists but has zero projects:
 
 ### Notes
 
-- The registry is stored at `~/.claude/starter-kit-projects.json` (global — shared across all starter kit instances)
+- The registry is stored at `~/.claude/starter-kit-projects.json` (global — shared across all starter kit instances). All registry reads and writes go through `scripts/registry.mjs` in the starter kit (run it from the kit folder, or use the kit path saved in `~/.claude/starter-kit-source-path`). It reads every shape the file has taken, always writes `{"projects": [...]}`, backs the file up before repairing it, and refuses to overwrite a file that is not valid JSON. Never edit the registry by hand or rewrite it yourself.
 - Projects are registered automatically by `/new-project` after successful scaffolding
 - Missing projects still appear in the list — use `/remove-project` to clean them up
 - The registry file is NEVER committed to git (it's in `~/.claude/`)

@@ -1,6 +1,6 @@
 # Plan: Kit manifest and uniform project sync
 
-Status: Phases 1, 2 and 3 complete (kit PR #1, #2, #3 merged; Phase 3 work in kit PR for branch `feat/update-project-sync`; tessera PR #14 merged, #15 open). Next: Phase 5 rollout, starting with the three clean projects.
+Status: Phases 1 to 3 complete and merged. Phase 5 rollout under way: onshift, frictionlog and onshift-native are synced on review branches; the hook-path, registry and branch-guard fixes are in the open kit PR for `fix/registry-branch-hook-settings`. Five dirty repos and six unconverted projects remain.
 
 Goal: every project (new and existing) gets the same commands, skills, hooks, gitignore entries, and CLAUDE.md blocks, driven by one manifest. Includes Beacon, /mdd, Tessera, and the Superpowers + Plannotator workflow.
 
@@ -15,7 +15,9 @@ Goal: every project (new and existing) gets the same commands, skills, hooks, gi
 - Block ownership: Tessera owns its CLAUDE.md block (injected by `tessera scan`). The kit owns a separate workflow block with its own markers.
 - One shared engine, `scripts/kit-apply.sh`, applies the manifest. Both scaffold scripts, the Go/Python/framework modes of `/new-project`, and `/update-project` call it.
 - Hooks are split by owner. `block-secrets`, `verify-no-secrets`, and `check-rulecatch` are global: wired only in the user's global settings, installed by `/install-global`. The other six are per-project and kept identical by the sync. The `clean` profile gets only `lint-on-save`.
-- Project `settings.json` is generated from `templates/project-settings*.json` and never lists global hooks or Plannotator hooks.
+- Project `settings.json` is generated from `templates/project-settings*.json` and never lists global hooks or Plannotator hooks. Project hooks are wired as `bash "${CLAUDE_PROJECT_DIR}"/.claude/hooks/<name>` (documented project-root variable): a project-relative path fails from any subfolder, and a `~/.claude` path needs the global install.
+- The project registry is read and written only by `scripts/registry.mjs` (reads every shape it has been seen in, always writes `{"projects": [...]}`, backs up before repairing, refuses to overwrite invalid JSON).
+- `check-branch.sh` checks the repository a commit really targets (`cd <dir> &&`, `git -C <dir>`), not just the session folder.
 - Plannotator hooks are owned by the Tessera plugin only.
 - `.mcp.json` is gitignored in every project (it embeds an absolute path).
 - Onshift's 17 commands are stale copies (old `project-docs/` paths; no project has that folder now). Fix them through the sync, not by copying onshift's versions into the kit.
@@ -39,14 +41,18 @@ Goal: every project (new and existing) gets the same commands, skills, hooks, gi
 - Tessera's own regression test says `uvx --from tessera` pulls the wrong PyPI package, yet the README and `install.sh` still use `uvx` and `pip install tessera`. The PyPI lookup was not completed; unverified.
 - Tessera versions disagreed: `pyproject.toml` 0.3.0 versus `plugin.json` 0.4.1. The installed `tessera` binary reports 0.1.0 only because it is an editable install of the local checkout (stale metadata); it runs the repo's current code. `pyproject.toml` is aligned to 0.4.1 in tessera PR #15.
 - Standalone Plannotator plus the Tessera plugin duplicates ExitPlanMode hooks (tessera ADR-003). The install check warns and skips in that case.
+- **A decision of mine was wrong and is corrected.** I recommended project-relative hook paths (`.claude/hooks/x`) after reasoning only about the missing-global-file case. The maintainer had already hit and fixed the real failure: a relative path fails with "No such file or directory" (exit 127, so the hook silently does not run; a python hook exits 2 and blocks) whenever the Bash tool's working directory is a subfolder, which is why the five untouched projects use `~/.claude/hooks/...`. The first onshift sync and the first frictionlog sync reintroduced the bug; both were redone with `${CLAUDE_PROJECT_DIR}` (verified in the Claude Code hooks documentation and reproduced from a subfolder).
+- The project registry file was a nested array, not `{"projects": [...]}`, so the scaffold scripts crashed on it at their final step. Repaired (9 projects kept, original backed up); the scaffold scripts now go through `registry.mjs`. Two registered folders no longer exist (`remnoteplugin`, `jarvis`).
+- `check-branch.sh` skipped the check entirely for `git -C <dir> commit` (its first test was `git\s+commit`), wrongly blocked `git commit-tree`, and judged `cd <dir> && git commit` by the session folder. Rewritten with 18 tests; the old hook fails 12 of them.
+- The settings templates (copied from the old scaffold) ran `lint-on-save` on `Write` only, although the existing test and the kit's own settings say `Write` and `Edit`. Fixed; the engine moves an existing hook to the template matcher.
 
 ## Existing project states (dry run of the engine, 2026-10-09)
 
 | Project | Git | Working tree | `.claude/` and `CLAUDE.md` | Dry-run result |
 |---|---|---|---|---|
-| frictionlog | yes | clean | both | 1 command updated; redundant global hooks in settings |
-| onshift | yes | clean | both | 6 commands updated (stale paths); redundant global hooks; `.mdd/` audits already tracked |
-| onshift-native | yes | clean | both | 16 commands new, 1 updated |
+| frictionlog | yes | clean | both | SYNCED on branch `chore/starter-kit-sync-20261009` (not merged) |
+| onshift | yes | clean | both | SYNCED and merged (first sync); corrective hook-path sync on branch `chore/starter-kit-sync-20261009-hook-paths` (not merged) |
+| onshift-native | yes | clean | both | SYNCED on branch `chore/starter-kit-sync-20261009` (not merged); first time it has settings.json, skills, agents and hooks |
 | lumiris | yes | dirty | both | 17 commands new (has none); redundant global hooks |
 | nodulerisk | yes | dirty | both | 1 updated; redundant global hooks |
 | nuklius | yes | dirty | both | 1 updated; redundant global hooks |
@@ -96,12 +102,16 @@ The dry runs wrote nothing (file counts identical before and after). Dirty repos
 - [ ] Read-only gap report: bundled skills and hooks versus upstream obra/superpowers and plannotator
 - [ ] Apply approved skill and hook updates with tests
 
-### Phase 5: Rollout (next)
-- [ ] Merge the open PRs (kit Phase 3, tessera #15) so rollout uses them
-- [ ] Install the Tessera plugin on the user's machine; then remove the direct Plannotator hooks from the kit's own local `settings.json`
-- [ ] Apply to the clean repos first: onshift, then frictionlog, then onshift-native (dry run, review, apply, merge the sync branch)
-- [ ] User commits or stashes the five dirty repos, then each is dry-run and applied one at a time
+### Phase 5: Rollout (in progress)
+- [x] Merge the open PRs so rollout uses them (kit PR #4, tessera PR #15)
+- [x] Install the Tessera plugin on the user's machine; remove the direct Plannotator hooks from the kit's local `settings.json`
+- [x] onshift synced (first sync merged by the user); redone hook-path correction on a new branch
+- [x] frictionlog and onshift-native synced on review branches
+- [ ] User reviews and merges the three review branches (`git -C <project> switch <original branch> && git -C <project> merge <sync branch>`)
+- [ ] Merge the kit PR for the registry, branch-guard, settings and hook-path fixes
+- [ ] User commits or stashes the five dirty repos (lumiris, nodulerisk, nuklius, personalfinance, taxplanprep), then each is dry-run and synced one at a time; these five currently use `~/.claude/hooks/...` and will be migrated to the `${CLAUDE_PROJECT_DIR}` form
 - [ ] Run `/convert-project-to-starter-kit` for the six non-git or unconverted projects (backup mode for non-git)
+- [ ] Decide what to do with the two registry entries whose folders no longer exist
 
 ### Phase 6: Verification
 - [ ] Sync a copy of onshift in a scratch directory; a second sync produces no diff
