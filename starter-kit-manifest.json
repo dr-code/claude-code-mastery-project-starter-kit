@@ -18,7 +18,7 @@
       ],
       "global": ["block-secrets.py", "verify-no-secrets.sh", "check-rulecatch.sh"]
     },
-    "hookWiring": "project hooks are copied into each project's .claude/hooks and wired in its settings.json. global hooks are installed to ~/.claude/hooks by /install-global and wired ONLY in ~/.claude/settings.json; project settings.json must not list them (a missing python3 hook file exits 2 and blocks tools, and listing them twice fires them twice). Plannotator hooks are owned by the tessera plugin and must not appear in any settings.json."
+    "hookWiring": "project hooks are copied into each project's .claude/hooks and wired in its settings.json as bash \"${CLAUDE_PROJECT_DIR}\"/.claude/hooks/<name> (a project-relative path fails from any subfolder; a ~/.claude path needs the global install). global hooks are installed to ~/.claude/hooks by /install-global and wired ONLY in ~/.claude/settings.json; project settings.json must not list them (a missing python3 hook file exits 2 and blocks tools, and listing them twice fires them twice). Plannotator hooks are owned by the tessera plugin and must not appear in any settings.json."
   },
 
   "profiles": {

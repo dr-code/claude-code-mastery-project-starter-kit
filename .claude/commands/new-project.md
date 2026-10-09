@@ -112,8 +112,14 @@ This enables `/projects-created` and `/remove-project` to track all projects.
 
 ### How to register
 
-1. Read `~/.claude/starter-kit-projects.json` (create if it doesn't exist)
-2. Append a new entry to the `projects` array:
+All registry reads and writes go through `scripts/registry.mjs` in the starter kit (run it from the kit folder, or use the kit path saved in `~/.claude/starter-kit-source-path`). It reads every shape the file has taken, always writes `{"projects": [...]}`, backs the file up before repairing it, and refuses to overwrite a file that is not valid JSON. Never edit the registry by hand or rewrite it yourself.
+
+```bash
+node scripts/registry.mjs add --name "my-app" --path "/home/user/projects/my-app" \
+  --profile default --language node --framework next --database mongo
+```
+
+This creates the registry if it is missing, repairs an older-shaped one, and updates the entry if the path is already registered. The stored entry looks like:
 
 ```json
 {
@@ -127,8 +133,6 @@ This enables `/projects-created` and `/remove-project` to track all projects.
 }
 ```
 
-3. Write the updated file back
-
 **Field mapping:**
 - `name` — project directory name (last segment of path)
 - `path` — absolute path to the project directory
@@ -136,15 +140,9 @@ This enables `/projects-created` and `/remove-project` to track all projects.
 - `language` — `node`, `go`, or `python`
 - `framework` — the chosen framework (e.g., `next`, `gin`, `fastapi`), or `none` for clean mode
 - `database` — `mongo`, `postgres`, `mysql`, `mssql`, `sqlite`, or `none`
-- `createdAt` — ISO 8601 timestamp of creation
+- `createdAt` — set automatically
 
-**If the file doesn't exist yet**, create it with:
-
-```json
-{
-  "projects": []
-}
-```
+The two scaffold scripts (`scaffold-default.sh`, `scaffold-clean.sh`) already do this. If registration fails, the project is still created; they print the exact command to run once the registry is fixed.
 
 **This step happens AFTER git init and initial commit, as the very last action before displaying the verification checklist.**
 

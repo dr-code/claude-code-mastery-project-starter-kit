@@ -90,7 +90,7 @@ Choose the profile with `--profile clean` if the project's `.claude/features.jso
 Read the output for these cases and tell the user plainly:
 
 - `WARNING globally-owned hooks listed here`: the project's `settings.json` lists hooks that are provided globally (block-secrets, verify-no-secrets, check-rulecatch) or by the Tessera plugin (Plannotator). Listing them again fires them twice. Offer `--fix-settings` in Step 4. The engine removes a hook only when its replacement is verified present on this machine (the global hook file exists and is wired in `~/.claude/settings.json`, or the Tessera plugin is installed); otherwise it keeps the hook and says so.
-- `migrated N hook path(s)`: project hooks wired through `~/.claude/hooks/...` are rewritten to the project-local `.claude/hooks/...` path instead of being added a second time.
+- `migrated N hook command(s)`: a project hook wired through `~/.claude/hooks/...` or a project-relative `.claude/hooks/...` path is rewritten to `bash "${CLAUDE_PROJECT_DIR}"/.claude/hooks/...` instead of being added a second time. The variable form works from any subfolder and on any machine; a project-relative path fails with "No such file or directory" whenever the Bash tool's working directory is a subfolder, and a `~/.claude` path needs the global install.
 - `managed-ignore paths are already tracked by git`: ignoring a tracked path has no effect. Report it; do not untrack anything.
 - `kit-management commands present`: suggest `--clean`.
 - `tessera-plugin MISSING`: the real run installs it (this changes the machine, not just the project; say so before Step 5).
@@ -275,10 +275,13 @@ If `docs/ARCHITECTURE_SUMMARY.md` is missing, create it with the standard starte
 
 ## Step 6 — Update Registry
 
-1. Read `~/.claude/starter-kit-projects.json` (create `{"projects": []}` if missing)
-2. Find the project entry by `path` matching `$TARGET`; if none, add one: `name` (folder name), `path`, `profile` ("existing"), `language` ("unknown"), `createdAt`
-3. Set `updatedAt` to the current ISO timestamp and increment `updateCount` (start at 1)
-4. Write the registry back
+All registry reads and writes go through `scripts/registry.mjs` in the starter kit (run it from the kit folder, or use the kit path saved in `~/.claude/starter-kit-source-path`). It reads every shape the file has taken, always writes `{"projects": [...]}`, backs the file up before repairing it, and refuses to overwrite a file that is not valid JSON. Never edit the registry by hand or rewrite it yourself.
+
+```bash
+node "$SOURCE/scripts/registry.mjs" touch --path "$TARGET"
+```
+
+This sets `updatedAt`, increments `updateCount`, and registers the project (profile `existing`) if it was not in the registry yet.
 
 ---
 
