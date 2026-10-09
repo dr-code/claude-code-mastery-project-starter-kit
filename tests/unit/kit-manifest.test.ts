@@ -98,7 +98,7 @@ describe('starter-kit-manifest.json', () => {
       const cmds = wiredCommands(path.join(ROOT, profile.settingsTemplate));
       for (const cmd of cmds) {
         expect(cmd, `${name}: ${cmd}`).not.toMatch(FORBIDDEN_IN_PROJECT_SETTINGS);
-        const file = cmd.split(' ')[1].replace('.claude/hooks/', '');
+        const file = (cmd.split(' ')[1] ?? '').replace('.claude/hooks/', '');
         expect(allowed, `${name} wires ${file}`).toContain(file);
       }
     }
@@ -159,7 +159,7 @@ describe('kit-apply.sh', () => {
     const settings = path.join(project, '.claude/settings.json');
     for (const cmd of wiredCommands(settings)) {
       expect(cmd).not.toMatch(FORBIDDEN_IN_PROJECT_SETTINGS);
-      expect(fs.existsSync(path.join(project, cmd.split(' ')[1]))).toBe(true);
+      expect(fs.existsSync(path.join(project, cmd.split(' ')[1] ?? ''))).toBe(true);
     }
 
     const gitignore = fs.readFileSync(path.join(project, '.gitignore'), 'utf8').split('\n');
@@ -217,5 +217,179 @@ describe('kit-apply.sh', () => {
     const r = run('--profile', 'nope');
     expect(r.status).not.toBe(0);
     expect(r.stdout + r.stderr).toMatch(/unknown profile/);
+  });
+
+  const changesOf = (stdout: string) => Number(/RESULT: changes=(\d+)/.exec(stdout)?.[1] ?? NaN);
+  const commandsIn = (file: string) => wiredCommands(file);
+
+  describe('update mode on an existing project', () => {
+    function seedExisting() {
+      fs.mkdirSync(path.join(project, '.claude/commands'), { recursive: true });
+      fs.writeFileSync(path.join(project, '.claude/commands/mdd.md'), 'OLD STALE CONTENT\n');
+      fs.writeFileSync(path.join(project, '.claude/commands/my-own.md'), 'user command\n');
+      fs.writeFileSync(
+        path.join(project, '.claude/settings.json'),
+        JSON.stringify({
+          hooks: {
+            PreToolUse: [
+              {
+                matcher: 'Bash',
+                hooks: [{ type: 'command', command: 'bash ~/.claude/hooks/check-rybbit.sh' }],
+              },
+            ],
+          },
+        }),
+      );
+    }
+
+    it('--dry-run reports changes but writes nothing', () => {
+      seedExisting();
+      const before = snapshot(project);
+      const r = run('--dry-run');
+      expect(r.status, r.stderr + r.stdout).toBe(0);
+      expect(r.stdout).toMatch(/Dry run complete: nothing was written/);
+      expect(changesOf(r.stdout)).toBeGreaterThan(0);
+      expect(r.stdout).toMatch(/UPDATED: mdd\.md/);
+      expect(snapshot(project)).toEqual(before);
+    });
+
+    it('--backup-dir saves the old copy of every changed file and leaves custom files alone', () => {
+      seedExisting();
+      const backup = path.join(tmp, 'backup');
+      const r = run('--backup-dir', backup);
+      expect(r.status, r.stderr + r.stdout).toBe(0);
+      expect(fs.readFileSync(path.join(backup, '.claude/commands/mdd.md'), 'utf8')).toBe('OLD STALE CONTENT\n');
+      expect(fs.existsSync(path.join(backup, '.claude/settings.json'))).toBe(true);
+      expect(fs.readFileSync(path.join(project, '.claude/commands/mdd.md'), 'utf8')).not.toContain('OLD STALE');
+      expect(fs.readFileSync(path.join(project, '.claude/commands/my-own.md'), 'utf8')).toBe('user command\n');
+    });
+
+    it('migrates a project hook wired under ~/.claude to the local path instead of duplicating it', () => {
+      seedExisting();
+      expect(run().status).toBe(0);
+      const cmds = commandsIn(path.join(project, '.claude/settings.json'));
+      expect(cmds.filter((c) => c.includes('check-rybbit.sh'))).toEqual(['bash .claude/hooks/check-rybbit.sh']);
+      expect(new Set(cmds).size).toBe(cmds.length);
+      expect(cmds.some((c) => c.includes('~/.claude'))).toBe(false);
+    });
+
+    it('reports changes=0 on a second run', () => {
+      seedExisting();
+      expect(changesOf(run().stdout)).toBeGreaterThan(0);
+      expect(changesOf(run().stdout)).toBe(0);
+    });
+
+    const seedRedundant = () => {
+      fs.mkdirSync(path.join(project, '.claude'), { recursive: true });
+      fs.writeFileSync(
+        path.join(project, '.claude/settings.json'),
+        JSON.stringify({
+          hooks: {
+            PreToolUse: [
+              { matcher: 'Read|Edit|Write', hooks: [{ type: 'command', command: 'python3 .claude/hooks/block-secrets.py' }] },
+            ],
+            PermissionRequest: [{ matcher: 'ExitPlanMode', hooks: [{ type: 'command', command: 'plannotator' }] }],
+          },
+        }),
+      );
+    };
+
+    it('--fix-settings keeps globally-owned hooks whose replacement is NOT verified', () => {
+      seedRedundant();
+      const r = run('--fix-settings');
+      expect(r.status, r.stderr).toBe(0);
+      expect(r.stdout).toMatch(/KEPT, replacement not verified/);
+      const after = fs.readFileSync(path.join(project, '.claude/settings.json'), 'utf8');
+      expect(after).toContain('block-secrets.py');
+      expect(after).toContain('"plannotator"');
+    });
+
+    it('--fix-settings removes them once the global hook and the plugin are verified present', () => {
+      seedRedundant();
+      const home = path.join(tmp, 'home/.claude');
+      fs.mkdirSync(path.join(home, 'hooks'), { recursive: true });
+      fs.writeFileSync(path.join(home, 'hooks/block-secrets.py'), '#!/usr/bin/env python3\n');
+      fs.writeFileSync(
+        path.join(home, 'settings.json'),
+        JSON.stringify({ hooks: { PreToolUse: [{ hooks: [{ type: 'command', command: 'python3 ~/.claude/hooks/block-secrets.py' }] }] } }),
+      );
+      fs.mkdirSync(path.join(home, 'plugins'), { recursive: true });
+      fs.writeFileSync(
+        path.join(home, 'plugins/installed_plugins.json'),
+        JSON.stringify({ version: 2, plugins: { 'tessera@tessera': [{ scope: 'user' }] } }),
+      );
+      const r = run('--fix-settings');
+      expect(r.status, r.stderr).toBe(0);
+      expect(r.stdout).toMatch(/removed 2 redundant/);
+      const after = fs.readFileSync(path.join(project, '.claude/settings.json'), 'utf8');
+      expect(after).not.toContain('block-secrets.py');
+      expect(after).not.toContain('"plannotator"');
+    });
+
+    it('--no-overwrite adds missing files but keeps a differing file of the user', () => {
+      seedExisting();
+      const r = run('--no-overwrite');
+      expect(r.status, r.stderr + r.stdout).toBe(0);
+      expect(fs.readFileSync(path.join(project, '.claude/commands/mdd.md'), 'utf8')).toBe('OLD STALE CONTENT\n');
+      expect(r.stdout).toMatch(/KEPT \(yours differs/);
+      expect(fs.existsSync(path.join(project, '.claude/commands/commit.md'))).toBe(true);
+    });
+
+    it('--skip-claude-md never touches CLAUDE.md and skips the scan', () => {
+      const original = '# My own rules\n\nDo not change.\n';
+      fs.writeFileSync(path.join(project, 'CLAUDE.md'), original);
+      const r = run('--skip-claude-md');
+      expect(r.status, r.stderr + r.stdout).toBe(0);
+      expect(fs.readFileSync(path.join(project, 'CLAUDE.md'), 'utf8')).toBe(original);
+      expect(r.stdout).toMatch(/workflow:\s+skipped \(--skip-claude-md\)/);
+      expect(r.stdout).toMatch(/scan skipped \(--skip-claude-md\)/);
+    });
+
+    it('refuses to run against the starter kit itself', () => {
+      const r = spawnSync('bash', [KIT_APPLY, ROOT, '--dry-run'], { env: env(), encoding: 'utf8' });
+      expect(r.status).not.toBe(0);
+      expect(r.stdout + r.stderr).toMatch(/refusing to apply/);
+    });
+  });
+});
+
+describe('command docs stay wired to the engine', () => {
+  const read = (rel: string) => fs.readFileSync(path.join(ROOT, rel), 'utf8');
+  const command = (name: string) => read(`.claude/commands/${name}.md`);
+
+  it('new-project.md applies the layer through kit-apply.sh in every mode', () => {
+    const t = command('new-project');
+    expect(t).not.toMatch(/copied in full/);
+    expect(t).not.toMatch(/block-secrets\.py ~\/\.claude\/hooks/);
+    // clean + default script descriptions, Go step, Python step, and four framework bullets
+    expect((t.match(/kit-apply\.sh/g) ?? []).length).toBeGreaterThanOrEqual(7);
+  });
+
+  it('update-project.md is dry-run first, branch-based, and never sweeps a dirty tree', () => {
+    const t = command('update-project');
+    expect(t).toMatch(/kit-apply\.sh" "\$TARGET" --dry-run/);
+    expect(t).toMatch(/chore\/starter-kit-sync-/);
+    expect(t).toMatch(/uncommitted changes/);
+    expect(t).toMatch(/Never runs `git init`|Do NOT run `git init`/);
+    expect(t).not.toMatch(/pre-update snapshot/);
+    expect(t).not.toMatch(/git add -A && git commit -m "chore: pre-/);
+    expect(t).not.toMatch(/deep.merge/i);
+  });
+
+  it('convert-project-to-starter-kit.md uses the engine and the dirty-tree stop', () => {
+    const t = command('convert-project-to-starter-kit');
+    expect(t).toMatch(/kit-apply\.sh/);
+    expect(t).toMatch(/\*\*STOP\.\*\*/);
+    expect(t).not.toMatch(/Safety Commit/);
+    expect(t).not.toMatch(/pre-conversion snapshot/);
+    expect(t).not.toMatch(/from the starter kit CLAUDE\.md/);
+  });
+
+  it('documents every option kit-apply.sh parses in its usage header', () => {
+    const script = read('scripts/kit-apply.sh');
+    const header = script.split('\nset -euo pipefail')[0];
+    const parsed = [...script.matchAll(/^\s+(--[a-z-]+)\)/gm)].map((m) => m[1]);
+    expect(parsed.length).toBeGreaterThanOrEqual(7);
+    for (const flag of parsed) expect(header, flag).toContain(flag);
   });
 });

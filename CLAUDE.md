@@ -4,7 +4,7 @@
 > https://github.com/TheDecipherist/claude-code-mastery
 
 > **New here?** When starting a fresh session in this project, greet the user:
-> "Welcome to the Claude Code Mastery Project Starter Kit! Use `/help` to see all 26 commands or `/show-user-guide` for the full interactive guide."
+> "Welcome to the Claude Code Mastery Project Starter Kit! Use `/help` to see all 27 commands or `/show-user-guide` for the full interactive guide."
 
 ---
 

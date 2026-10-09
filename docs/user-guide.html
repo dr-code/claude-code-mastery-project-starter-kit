@@ -339,11 +339,11 @@
           </div>
           <div class="command-card">
             <h3><code>/convert-project-to-starter-kit</code></h3>
-            <p class="command-desc">Non-destructive merge of all starter kit infrastructure into an existing project. Creates safety commit first. Undo with <code>git revert HEAD</code>.</p>
+            <p class="command-desc">Non-destructive: applies the starter-kit layer to an existing project on a new <code>chore/starter-kit-convert-*</code> branch, and stops if the working tree is dirty. Undo by deleting the branch.</p>
           </div>
           <div class="command-card">
             <h3><code>/update-project</code></h3>
-            <p class="command-desc">Smart-merge the latest starter kit commands, hooks, skills, agents, and rules into an existing project. Shows a diff report before applying. Creates a safety commit for easy undo.</p>
+            <p class="command-desc">Bring one or many existing projects up to the current starter-kit layer (<code>&lt;path&gt;</code>, <code>--all</code>, <code>--scan &lt;dir&gt;</code>, <code>--dry-run</code>). Reports new, updated, unchanged, and custom files first, then works on a new <code>chore/starter-kit-sync-*</code> branch.</p>
           </div>
           <div class="command-card">
             <h3><code>/add-feature &lt;name&gt;</code></h3>
@@ -872,7 +872,7 @@ CMD ["node", "dist/index.js"]</code></pre>
           </div>
           <div class="command-card">
             <h3>How do I update the starter kit in an existing project?</h3>
-            <p class="command-desc">Run <code>/update-project</code> &mdash; it picks from your registered projects, shows a diff report, and smart-merges only changed files. For first-time conversion, use <code>/convert-project-to-starter-kit</code>.</p>
+            <p class="command-desc">Run <code>/update-project &lt;path&gt;</code> (or <code>--all</code>) &mdash; it shows a dry-run report, then applies only the changed kit-owned files on a new branch. For first-time conversion, use <code>/convert-project-to-starter-kit</code>.</p>
           </div>
           <div class="command-card">
             <h3>Does this work with monorepos?</h3>

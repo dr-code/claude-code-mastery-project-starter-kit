@@ -1,15 +1,22 @@
 ---
-description: Update a starter-kit project with the latest commands, hooks, skills, and rules
+description: Update one or many existing projects to the latest starter-kit layer (commands, hooks, settings, managed blocks) — safe, branch-based, dry-run first
 scope: starter-kit
-argument-hint: [--force | --clean]
+argument-hint: [<project-path>] [--all] [--scan <dir>] [--dry-run] [--force] [--clean]
 allowed-tools: Read, Write, Edit, Bash, Grep, Glob, AskUserQuestion
 ---
 
-# Update Starter Kit Project
+# Update Starter Kit Projects
 
-Update an existing starter-kit project with the latest commands, hooks, skills, agents, and rules from the current starter kit source. Smart merge — replaces starter kit files with newer versions while preserving any custom files the user created themselves.
+Bring existing projects in line with the current starter kit so every project has the same commands, hooks, `settings.json`, `.gitignore` entries, and managed `CLAUDE.md` blocks. The work is done by one engine, `$SOURCE/scripts/kit-apply.sh`, which reads `starter-kit-manifest.json`; this command adds target selection, safety, reporting, and git handling around it.
 
 **Arguments:** $ARGUMENTS
+
+**What this command never does**
+- Never commits changes it did not make: a dirty working tree stops the update for that project.
+- Never works on the project's current branch: changes go on a new `chore/starter-kit-sync-*` branch.
+- Never merges the kit's own `CLAUDE.md` or `.claude/settings.json` into a project. They describe the kit repo. Projects get their `settings.json` from `templates/project-settings*.json` and their `CLAUDE.md` content from managed blocks only.
+- Never touches files the kit does not own (custom commands, hooks, skills, agents).
+- Never runs `git init` or `git add -A` on a folder that is not already a repo.
 
 ---
 
@@ -21,119 +28,74 @@ Find the starter kit source directory:
 2. Else read `~/.claude/starter-kit-source-path` → verify it still has both files
 3. Else ask via AskUserQuestion: "Where is the starter kit cloned?" with a text input
 
+Verify `$SOURCE/starter-kit-manifest.json` and `$SOURCE/scripts/kit-apply.sh` exist; if not, stop: "This starter kit is too old for /update-project. Pull the latest kit first."
+
 Store as `$SOURCE`.
 
----
-
-## Step 1 — Registry Picker (Select Target)
-
-1. Read `~/.claude/starter-kit-projects.json`
-   - If file doesn't exist or empty → error: "No projects found. Use `/new-project` to create one first."
-   - If file is invalid JSON → error: "Project registry is corrupted. Check `~/.claude/starter-kit-projects.json`."
-
-2. Filter to projects whose `path` directory still exists on disk
-
-3. If no valid projects remain → error: "No registered projects found on disk. Use `/new-project` to create one."
-
-4. Display list with AskUserQuestion:
-   - "Which project do you want to update?"
-   - Options: up to 4 most recent projects (by `createdAt`), each showing: `name — language/framework — path`
-   - If more than 4: the 4th option should be "Other (type a path)"
-
-5. Store selected path as `$TARGET`
-
-### Validations (all must pass — stop with clear error if any fail)
-
-1. `$TARGET` directory exists → if not: "Directory not found: $TARGET"
-2. `$TARGET` is a git repo → run: `git -C "$TARGET" rev-parse --is-inside-work-tree 2>/dev/null`
-   - If not a git repo: "This project must be a git repo. Run `git init && git commit --allow-empty -m 'init'` first."
-3. `$TARGET` is NOT the starter kit itself (compare resolved paths of `$SOURCE` and `$TARGET`)
-   - If same: "Cannot update the starter kit itself."
-4. `$TARGET` is registered in `~/.claude/starter-kit-projects.json`
-   - If not registered: "This project isn't in the registry. Use `/convert-project-to-starter-kit` instead."
-
 Parse flags from `$ARGUMENTS`:
-- `--force` → set `$FORCE=true` (skips confirmation prompts)
-- `--clean` → set `$CLEAN=true` (skip normal update, jump to **Clean Mode** section below)
+- `--dry-run` → report only; stop after Step 3, change nothing
+- `--force` → skip confirmation prompts (never skips the dirty-tree stop)
+- `--clean` → run **Clean Mode** (below) after Steps 1-2
+- `--all` → every registered project
+- `--scan <dir>` → discover candidate projects under `<dir>`
 
 ---
 
-## Step 2 — Safety Commit
+## Step 1 — Select Targets
+
+Pick the target list in this order:
+
+1. **`<project-path>` given** → that one project.
+2. **`--all`** → read `~/.claude/starter-kit-projects.json`, keep projects whose `path` still exists. If the file is missing or empty, say so and suggest `--scan`.
+3. **`--scan <dir>`** → list immediate subdirectories of `<dir>` that contain `.claude/` or `.git`. Show a numbered table: name, git (yes/no), registered (yes/no), `.claude/` (yes/no). Ask via AskUserQuestion: "Update all N / Choose (type numbers) / Cancel". Never apply to a folder the user did not confirm.
+4. **Nothing given** → registry picker: up to 4 most recent registered projects as options, plus "Other (type a path)".
+
+### Validations (per target; a failure skips that target and continues)
+
+1. Directory exists.
+2. Not the starter kit itself (compare resolved paths of `$SOURCE` and `$TARGET`).
+3. If not in `~/.claude/starter-kit-projects.json`, it is registered automatically in Step 6 (name = folder name). Registration is no longer a prerequisite.
+
+---
+
+## Step 2 — Pre-flight (per target)
 
 ```bash
-cd "$TARGET"
-git status --porcelain
+git -C "$TARGET" rev-parse --is-inside-work-tree 2>/dev/null
+git -C "$TARGET" status --porcelain
+git -C "$TARGET" symbolic-ref -q --short HEAD
 ```
 
-- **If uncommitted changes exist** (git status --porcelain has output):
-  ```bash
-  cd "$TARGET" && git add -A && git commit -m "chore: pre-update snapshot (before starter kit update)"
-  ```
+| State | Action |
+|-------|--------|
+| Git repo, clean, on a branch | Continue. Remember the current branch as `$ORIGINAL_BRANCH`. |
+| Git repo, **uncommitted changes** | **STOP for this target.** Report: "`<name>` has N uncommitted files. Commit or stash them, then re-run." Never commit them for the user. Continue with the next target. |
+| Git repo, detached HEAD | Stop for this target: "Check out a branch first." |
+| **Not a git repo** | There is no git undo, so use backup mode: `BACKUP_DIR=~/.claude/starter-kit-backups/<name>-<YYYYMMDD-HHMMSS>`. Say so plainly and require confirmation (even with `--force`): "No git history here. Files will be backed up to `$BACKUP_DIR` before any change." Do NOT run `git init`: a baseline commit would stage everything in the folder. |
 
-- **If clean** (no uncommitted changes):
-  ```bash
-  cd "$TARGET" && git commit --allow-empty -m "chore: pre-update marker (before starter kit update)"
-  ```
-
-Store the hash: `PRE_UPDATE_HASH=$(git -C "$TARGET" rev-parse HEAD)`
-
-**STOP if git fails** (except "nothing to commit" which is fine — treat as clean).
+**Not yet converted:** if the target has no `.claude/` directory or no `CLAUDE.md`, stop for this target and say: "`<name>` hasn't been set up with the starter kit yet. Run `/convert-project-to-starter-kit <path>`." Conversion creates a security-only `CLAUDE.md`, asks how to treat existing files, and uses the same engine. `/update-project` only refreshes projects that already have both.
 
 ---
 
-## Step 3 — Inventory & Diff
+## Step 3 — Dry Run Report (per target)
 
-Build a manifest of what the starter kit currently has vs what the target has.
-
-### Categories to compare
-
-| Category | Source Location | Target Location |
-|----------|----------------|-----------------|
-| Commands | `$SOURCE/.claude/commands/*.md` (scope: project only) | `$TARGET/.claude/commands/*.md` |
-| Hooks | `$SOURCE/.claude/hooks/*.{sh,py}` | `$TARGET/.claude/hooks/*.{sh,py}` |
-| Skills | `$SOURCE/.claude/skills/*/SKILL.md` | `$TARGET/.claude/skills/*/SKILL.md` |
-| Agents | `$SOURCE/.claude/agents/*.md` | `$TARGET/.claude/agents/*.md` |
-
-**Command scope filtering:** Only include source commands that have `scope: project` in their YAML frontmatter. Commands with `scope: starter-kit` are kit-management commands and should never be copied to projects. If the target already has a starter-kit-scoped command (e.g., from a previous version), classify it as **CUSTOM** (user-created) — never overwrite or remove it.
-
-### For each file, classify as:
-
-- **NEW** — exists in source, not in target → will be added
-- **UPDATED** — exists in both, content differs (compare with `diff -q`) → will be replaced
-- **UNCHANGED** — exists in both, content is identical → skip
-- **CUSTOM** — exists in target only, not in source → never touched (user-created)
-
-### Display the diff report
-
-```
-=== Starter Kit Update Report ===
-
-Target: $TARGET
-Source: $SOURCE
-
-Commands:
-  + NEW:       update-project.md, show-user-guide.md
-  ↻ UPDATED:   commit.md, review.md (starter kit versions changed)
-  = UNCHANGED: help.md, progress.md, ... (12 files)
-  ○ CUSTOM:    my-custom-command.md (yours, not touched)
-
-Hooks:
-  + NEW:       (none)
-  ↻ UPDATED:   check-branch.sh
-  = UNCHANGED: block-secrets.py, lint-on-save.sh, ...
-  ○ CUSTOM:    (none)
-
-Skills:     (all unchanged)
-Agents:     (all unchanged)
-
-settings.json: hooks will be deep-merged
-CLAUDE.md:     3 new sections will be appended
-Infrastructure: .gitignore (2 lines to add), .env.example (1 key to add)
-
-Total: N files to add, N files to update, N unchanged, N custom (untouched)
+```bash
+bash "$SOURCE/scripts/kit-apply.sh" "$TARGET" --dry-run
 ```
 
----
+This writes nothing, installs nothing, and does not scan. It prints, for commands, skills, agents, and hooks, how many files are new, updated, unchanged, and custom (yours, never touched) with the names of new and updated ones, then what it would do to `settings.json`, `.gitignore`, and the `CLAUDE.md` workflow block, which global tools are missing, and a final `RESULT: changes=<n>`.
+
+Choose the profile with `--profile clean` if the project's `.claude/features.json` says `"language": "none"`; otherwise use the default.
+
+Read the output for these cases and tell the user plainly:
+
+- `WARNING globally-owned hooks listed here`: the project's `settings.json` lists hooks that are provided globally (block-secrets, verify-no-secrets, check-rulecatch) or by the Tessera plugin (Plannotator). Listing them again fires them twice. Offer `--fix-settings` in Step 4. The engine removes a hook only when its replacement is verified present on this machine (the global hook file exists and is wired in `~/.claude/settings.json`, or the Tessera plugin is installed); otherwise it keeps the hook and says so.
+- `migrated N hook path(s)`: project hooks wired through `~/.claude/hooks/...` are rewritten to the project-local `.claude/hooks/...` path instead of being added a second time.
+- `managed-ignore paths are already tracked by git`: ignoring a tracked path has no effect. Report it; do not untrack anything.
+- `kit-management commands present`: suggest `--clean`.
+- `tessera-plugin MISSING`: the real run installs it (this changes the machine, not just the project; say so before Step 5).
+
+Then run the feature-file inventory below, and combine both into one report per target.
 
 ## Step 3b — Feature File Inventory
 
@@ -180,60 +142,49 @@ Feature Files: (none installed or all unchanged)
 
 ## Step 4 — Confirm (unless --force)
 
-If not `$FORCE`, ask via AskUserQuestion:
+If `--dry-run` was given, print the reports and stop here: "Dry run only. No changes made."
 
-"Apply these updates? N new files, N updated files. Your custom files won't be touched."
+For several targets, first print a one-line-per-project table (project, git state, `changes=<n>`, blockers such as "dirty working tree"), then ask once. For one target, ask directly.
+
+Ask via AskUserQuestion:
+
+"Apply these updates? Your custom files won't be touched."
 - **Yes, update** (Recommended)
-- **Show me the diffs first** — for each UPDATED file, show `diff` output between source and target, then ask again
+- **Show me the diffs first** — for each UPDATED file, show `diff` between `$SOURCE` and `$TARGET`, then ask again
 - **No, cancel**
 
-If user selects "No, cancel" → stop immediately with: "Update cancelled. No changes made."
+If a `WARNING globally-owned hooks` line appeared, ask a second question: "Remove the redundant hooks that are verified to be provided globally?" Yes (Recommended) passes `--fix-settings`; No leaves them and only reports.
+
+If the user cancels: "Update cancelled. No changes made."
 
 ---
 
-## Step 5 — Apply Updates
+## Step 5 — Apply (per target)
 
-### 5a. Commands, Hooks, Skills, Agents
+### 5a. Branch (git projects)
 
-For each **NEW** file: copy from source to target.
-For each **UPDATED** file: overwrite target with source version.
-For **CUSTOM** and **UNCHANGED**: skip entirely.
-
-For skills: copy the entire skill directory (e.g., `$SOURCE/.claude/skills/code-review/` → `$TARGET/.claude/skills/code-review/`).
-
-Make hooks executable:
 ```bash
-chmod +x "$TARGET/.claude/hooks/"*.sh 2>/dev/null
-chmod +x "$TARGET/.claude/hooks/"*.py 2>/dev/null
+cd "$TARGET"
+BRANCH="chore/starter-kit-sync-$(date +%Y%m%d)"
+git rev-parse --verify -q "$BRANCH" >/dev/null && BRANCH="$BRANCH-$(date +%H%M)"
+git switch -c "$BRANCH"
 ```
 
-### 5b. settings.json — Deep Merge
+Never apply on the original branch. For non-git projects, skip this step and pass `--backup-dir "$BACKUP_DIR"` below.
 
-Same merge logic as `/convert-project-to-starter-kit`:
+### 5b. Run the engine
 
-1. Read both `$SOURCE/.claude/settings.json` and `$TARGET/.claude/settings.json` as JSON
-2. `permissions.deny`: merge arrays, deduplicate by value
-3. For each hook event type (`PreToolUse`, `PostToolUse`, `Stop`):
-   - For each matcher entry in source: check if target already has same matcher string
-   - Same matcher → merge the `hooks` arrays (deduplicate by `command` string)
-   - New matcher → add entire entry to target
-4. NEVER remove existing entries from target
-5. Write merged result to `$TARGET/.claude/settings.json`
+```bash
+bash "$SOURCE/scripts/kit-apply.sh" "$TARGET" [--profile clean] [--fix-settings] [--backup-dir "$BACKUP_DIR"]
+```
 
-If target has no `.claude/settings.json`: copy from source directly.
+This copies the kit-owned commands, skills, agents, and project hooks, generates or merges `settings.json` from the profile template, adds the managed `.gitignore` entries, inserts or replaces the workflow block in `CLAUDE.md` between its markers, checks Beacon, Plannotator and the Tessera plugin (installing what is missing), and runs `tessera scan`. It is safe to run again.
 
-### 5c. CLAUDE.md — Section Merge
+Set `STARTER_KIT_SKIP_INSTALL=1` to report missing tools without installing them.
 
-Same as `/convert-project-to-starter-kit`:
+If the engine exits non-zero, stop for this target, leave the branch in place, and report the error. Do not retry blindly.
 
-1. Parse both by `## ` (h2) headers
-2. For each section in source not in target → append at end of target CLAUDE.md
-3. For Critical Rules: sub-merge by `### ` (h3) numbered rules — add missing rules, keep existing
-4. NEVER remove or replace existing sections
-
-If target has no `CLAUDE.md`: skip (don't create — the project should already have one from initial creation).
-
-### 5d. Feature File Updates
+### 5c. Feature File Updates
 
 If Step 3b identified any **UPDATED** or **NEW** feature files:
 
@@ -247,7 +198,7 @@ After copying, update the manifest `$TARGET/.claude/features.json`:
 
 If no feature files were changed, skip this step entirely.
 
-### 5e. Infrastructure Files
+### 5d. Infrastructure Files
 
 | File | If Missing in Target | If Exists in Target |
 |------|---------------------|---------------------|
@@ -258,8 +209,8 @@ If no feature files were changed, skip this step entirely.
 | `docs/ARCHITECTURE.md` | Copy | Skip |
 | `docs/INFRASTRUCTURE.md` | Copy | Skip |
 | `docs/DECISIONS.md` | Copy | Skip |
-| `.env.example` | Copy from source | Merge: read both, add lines from source whose key name (before `=`) doesn't exist in target. Append missing lines at end. |
-| `.gitignore` | Copy from source | Merge: add lines from source that don't exist in target. Ensure `.env`, `CLAUDE.local.md`, `_ai_temp/` are present. |
+| `.env.example` | Copy from source | Merge: add lines from source whose key name (before `=`) doesn't exist in target. |
+| `.gitignore` | Handled by the engine (managed entries). Also ensure `.env`, `CLAUDE.local.md`, `_ai_temp/` are present. | Do NOT copy other lines from the kit's own `.gitignore`: it describes the kit repo. |
 | `.dockerignore` | Copy from source | Merge: add lines from source that don't exist in target. |
 
 If `docs/PROJECT_CONTEXT.md` is missing, create it with the standard starter template:
@@ -324,68 +275,67 @@ If `docs/ARCHITECTURE_SUMMARY.md` is missing, create it with the standard starte
 
 ## Step 6 — Update Registry
 
-1. Read `~/.claude/starter-kit-projects.json`
-2. Find the project entry by `path` matching `$TARGET`
-3. Add or update `updatedAt` field with current ISO timestamp
-4. Increment `updateCount` field (start at 1 if missing, increment if exists)
-5. Write updated registry back to `~/.claude/starter-kit-projects.json`
+1. Read `~/.claude/starter-kit-projects.json` (create `{"projects": []}` if missing)
+2. Find the project entry by `path` matching `$TARGET`; if none, add one: `name` (folder name), `path`, `profile` ("existing"), `language` ("unknown"), `createdAt`
+3. Set `updatedAt` to the current ISO timestamp and increment `updateCount` (start at 1)
+4. Write the registry back
 
 ---
 
 ## Step 7 — Commit + Summary
 
+Git projects:
+
 ```bash
 cd "$TARGET"
 git add -A
-git commit -m "chore: update Claude Code Starter Kit infrastructure"
+git commit -m "chore: sync project with Claude Code Starter Kit"
 ```
 
-Store: `UPDATE_HASH=$(git -C "$TARGET" rev-parse HEAD)`
+The working tree was clean before this command started, so the commit contains only what the sync changed. `.tessera/` and `.mcp.json` are ignored. If there is nothing to commit, report "Already up to date" and switch back: `git switch "$ORIGINAL_BRANCH" && git branch -d "$BRANCH"`.
 
-**If nothing to commit** (all files unchanged): skip the commit, note "Already up to date."
-
-### Display summary
+Show a per-project summary:
 
 ```
-=== Starter Kit Update Complete ===
+=== Starter Kit Sync Complete ===
 
-Target:   $TARGET
+Project:  <name>  (<path>)
+Branch:   chore/starter-kit-sync-YYYYMMDD   (was on: <ORIGINAL_BRANCH>)
+Commit:   <hash>
 
-Commands:      N added, N updated, N unchanged, N custom
-Hooks:         N added, N updated, N unchanged, N custom
-Skills:        N added, N updated, N unchanged, N custom
-Agents:        N added, N updated, N unchanged, N custom
-Feature Files: N updated, N unchanged (across N features)
-settings.json: deep merged (N new hooks added) / unchanged / copied
-CLAUDE.md:     N sections added, N skipped (exists)
-Infrastructure: N files added, N merged, N skipped
+Commands:  N new, N updated, N unchanged, N custom
+Skills / Agents / Hooks: same breakdown
+settings.json:  <engine line>
+.gitignore:     <engine line>
+CLAUDE.md:      workflow block <added/updated/unchanged>
+Tools:          <engine lines>
 
-Pre-update commit:  $PRE_UPDATE_HASH
-Update commit:      $UPDATE_HASH
-
-To undo: git revert HEAD
-To review: git diff $PRE_UPDATE_HASH..HEAD
-
-Next: Run /help to see any new commands.
+Review:    git diff <ORIGINAL_BRANCH>..HEAD
+Accept:    git switch <ORIGINAL_BRANCH> && git merge <branch>
+Undo:      git switch <ORIGINAL_BRANCH> && git branch -D <branch>
 ```
+
+Non-git projects: show `Backup: $BACKUP_DIR` and "To restore a file, copy it back from the backup folder (same relative path)."
+
+After the last project, remind: run `/help` to see new commands, and ask Claude to run the Beacon skill-discovery step for projects where it has not been run.
 
 ---
 
 ## Edge Cases
 
-1. **Already up to date** — If all files are UNCHANGED and no infrastructure changes needed, report "Already up to date — no changes needed." and skip the update commit.
-
-2. **Target has no .claude/ directory** — This shouldn't happen for registered projects, but if it does, create the directories and treat all files as NEW.
-
-3. **Git fails** — If any git operation fails (commit, add), stop with a clear error. Never leave the project in a half-updated state.
-
-4. **Custom files with same name as starter kit** — If a user happened to create a file with the same name as a starter kit file (e.g., `help.md`), it will show as UPDATED (content differs). The diff report makes this visible before applying.
+1. **Already up to date** — `RESULT: changes=0` and no feature-file changes: report "Already up to date — no changes needed." No branch, no commit.
+2. **Dirty working tree** — skipped with an explicit message; never committed, stashed, or reset for the user.
+3. **Engine or git failure** — stop for that target, leave the new branch for inspection, never leave a half-written state without saying so. Other targets continue.
+4. **Custom file with a kit file's name** — it shows as UPDATED in the dry run (content differs) and is backed up in non-git mode. Review the dry run before confirming.
+5. **Tracked managed-ignore paths** (for example committed `.mdd/` audits) — reported, never untracked automatically.
+6. **Many projects** — `--all` and `--scan` process targets one at a time and report per project; one failure does not stop the others.
+7. **Kit repo as target** — refused.
 
 ---
 
 ## Clean Mode — `--clean`
 
-**If `$CLEAN` is true, skip Steps 2-7 entirely and run this flow instead.**
+**If `$CLEAN` is true, skip Steps 3-7 entirely and run this flow instead. Step 2 (pre-flight, branch) still applies: clean mode never runs on a dirty working tree.**
 
 Clean mode scans a project for commands that have `scope: starter-kit` in their frontmatter — these are kit-management commands that should NOT be in scaffolded projects. Older versions of the starter kit copied all commands without filtering, so existing projects may have them.
 
@@ -450,7 +400,7 @@ rm "$TARGET/.claude/commands/<filename>"
 
 ```bash
 cd "$TARGET"
-git add -A
+git add .claude/commands
 git commit -m "chore: remove starter-kit-scoped commands (clean)"
 ```
 

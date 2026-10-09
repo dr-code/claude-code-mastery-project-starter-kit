@@ -482,18 +482,20 @@ Merges starter kit infrastructure into an existing project non-destructively:
 /convert-project-to-starter-kit ~/projects/my-app --force  # Skip prompts
 ```
 
-Creates a safety commit first. Detects your language, copies commands/hooks/skills/agents, merges CLAUDE.md sections and settings.json hooks. Undo with `git revert HEAD`.
+Requires a clean working tree and works on a new `chore/starter-kit-convert-*` branch. Detects your language, then applies the starter-kit layer: commands, hooks, skills, agents, a generated `settings.json`, `.gitignore` entries, and managed `CLAUDE.md` blocks. Undo by deleting the branch.
 
 #### `/update-project`
 
-Updates an existing starter-kit project with the latest commands, hooks, skills, agents, and rules:
+Brings existing projects up to the current starter-kit layer so every project matches:
 
 ```bash
-/update-project              # Pick from registered projects
-/update-project --force      # Skip confirmation prompts
+/update-project ~/projects/my-app   # One project (registered automatically)
+/update-project --all               # Every registered project
+/update-project --scan ~/projects   # Discover projects, then confirm which to update
+/update-project --dry-run --all     # Report only, change nothing
 ```
 
-Smart merge — replaces starter kit files with newer versions while preserving any custom files you created. Shows a diff report (new, updated, unchanged, custom) before applying. Creates a safety commit first so you can `git revert HEAD` to undo.
+Dry-run first: shows a report (new, updated, unchanged, custom) per project before anything changes. Your custom files are never touched. Changes go on a new `chore/starter-kit-sync-*` branch, so review with `git diff` and accept with a merge. A project with uncommitted changes is skipped (never committed for you); projects that are not git repos are backed up to `~/.claude/starter-kit-backups/` first.
 
 ---
 
@@ -1188,7 +1190,7 @@ A: Yes. Create a `.md` file in `.claude/commands/`. The filename becomes the com
 A: `/review` is a structured prompt, not a linter. For comprehensive analysis, use it together with `/security-check` and the lint-on-save hook. RuleCatch provides automated monitoring across all sessions.
 
 **Q: How do I update the starter kit in an existing project?**
-A: Run `/update-project` to pull the latest commands, hooks, skills, and rules into a registered project. It shows a diff report before applying and preserves your custom files. For projects not yet using the starter kit, use `/convert-project-to-starter-kit` first.
+A: Run `/update-project <path>` (or `--all`) to bring a project up to the latest commands, hooks, skills, and managed blocks. It shows a dry-run report first, works on a new branch, and preserves your custom files. For projects not yet using the starter kit, use `/convert-project-to-starter-kit` first.
 
 ### Database
 

@@ -16,7 +16,7 @@
     "postbuild": "pnpm build:optimize",
     "build:optimize": "classpresso optimize",
     "start": "node dist/index.js",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit -p tsconfig.check.json",
     "test": "pnpm test:unit && pnpm test:e2e",
     "test:unit": "vitest run",
     "test:unit:watch": "vitest",

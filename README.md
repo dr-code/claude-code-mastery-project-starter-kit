@@ -29,7 +29,7 @@ This creates a new project directory with all the Claude Code tooling pre-config
 ```bash
 /convert-project-to-starter-kit ~/projects/my-existing-app
 ```
-Non-destructive merge — brings all starter kit infrastructure (commands, hooks, skills, agents, CLAUDE.md rules) into your existing project while preserving everything you already have. Creates a safety commit first so you can `git revert HEAD` to undo.
+Non-destructive — applies the starter-kit layer (commands, hooks, skills, agents, `settings.json`, managed `CLAUDE.md` blocks) to your existing project while preserving everything you already have. Works on a new branch (`chore/starter-kit-convert-*`), never commits your uncommitted work, and stops if the working tree is dirty. Undo by deleting the branch.
 
 **C. Customize the template itself:**
 Clone this repo and modify the commands, hooks, skills, and rules to match your team's standards. Then use your customized version as the source for `/new-project`.
@@ -909,7 +909,7 @@ Removes a project from the starter kit registry and optionally deletes its files
 
 ### `/convert-project-to-starter-kit`
 
-Merges all starter kit infrastructure into an existing project without destroying anything. Creates a safety commit first, detects your language and existing Claude setup, then asks how to handle conflicts (keep yours, replace, or choose per file). Copies commands, hooks, skills, agents, merges CLAUDE.md sections, deep-merges settings.json hooks, and adds infrastructure files (.gitignore, .env.example, docs templates). Registers the project so it appears in `/projects-created`. Use `--force` to skip prompts and use "keep existing, add missing" for everything. Undo with `git revert HEAD`.
+Applies the starter-kit layer to an existing project without destroying anything. Requires a clean working tree and works on a new `chore/starter-kit-convert-*` branch (projects that are not git repos are backed up to `~/.claude/starter-kit-backups/` instead; it never runs `git init`). Detects your language and existing Claude setup, then asks how to handle conflicts (keep yours, replace, or choose per file). Uses the same engine as `/new-project` (`scripts/kit-apply.sh`) to copy commands, hooks, skills, and agents, generate or extend `settings.json`, add `.gitignore` entries, and add managed `CLAUDE.md` blocks; it adds infrastructure files (`.env.example`, docs templates) and registers the project so it appears in `/projects-created`. Use `--force` to skip prompts and use "keep existing, add missing" for everything. Undo by deleting the branch.
 
 ```bash
 /convert-project-to-starter-kit ~/projects/my-app
@@ -918,11 +918,14 @@ Merges all starter kit infrastructure into an existing project without destroyin
 
 ### `/update-project`
 
-Updates an existing starter-kit project with the latest commands, hooks, skills, agents, and rules from the current starter kit source. Smart merge — replaces starter kit files with newer versions while preserving any custom files the user created. Shows a diff report before applying. Creates a safety commit first so you can `git revert HEAD` to undo.
+Brings one or many existing projects up to the current starter-kit layer so they all match. Dry-run first: it reports new, updated, unchanged, and custom (yours, never touched) files per project, then asks before changing anything. Changes land on a new `chore/starter-kit-sync-*` branch; a project with uncommitted changes is skipped, never committed for you. Projects that are not git repos are backed up, not `git init`-ed. Uses the shared engine `scripts/kit-apply.sh`, so results match `/new-project`.
 
 ```bash
-/update-project              # Pick from registered projects
-/update-project --force      # Skip confirmation prompts
+/update-project ~/projects/my-app   # One project (registered automatically)
+/update-project --all               # Every registered project
+/update-project --scan ~/projects   # Discover projects, then confirm which to update
+/update-project --dry-run --all     # Report only, change nothing
+/update-project --force             # Skip confirmation prompts (never skips the dirty-tree stop)
 ```
 
 ### `/add-feature`
