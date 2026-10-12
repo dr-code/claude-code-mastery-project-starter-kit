@@ -222,42 +222,7 @@ Track and display the engine's per-category counts (`new`, `updated`, `unchanged
 
 ### If target has no CLAUDE.md
 
-Create a minimal CLAUDE.md with security-only rules (safe for any project type):
-
-```markdown
-# CLAUDE.md — Project Instructions
-
----
-
-## Critical Rules
-
-### 0. NEVER Publish Sensitive Data
-
-- NEVER commit passwords, API keys, tokens, or secrets to git/npm/docker
-- NEVER commit `.env` files — ALWAYS verify `.env` is in `.gitignore`
-- Before ANY commit: verify no secrets are included
-- NEVER output secrets in suggestions, logs, or responses
-
-### 5. NEVER Hardcode Credentials
-
-- ALWAYS use environment variables for secrets
-- NEVER put API keys, passwords, or tokens directly in code
-- NEVER hardcode connection strings — use STRICTDB_URI from .env
-
-### 6. ALWAYS Ask Before Deploying
-
-- NEVER auto-deploy, even if the fix seems simple
-- NEVER assume approval — wait for explicit "yes, deploy"
-- ALWAYS ask before deploying to production
-
----
-
-## Workflow Preferences
-
-- Quality over speed — if unsure, ask before executing
-- Plan first, code second — use plan mode for non-trivial tasks
-- One task, one chat — `/clear` between unrelated tasks
-```
+Create it from the same security-only text a clean scaffold gets: the `CLAUDEMD_EOF` block in `$SOURCE/scripts/scaffold-clean.sh` (safe for any project type). Do not paste a shortened copy here; the scaffold script is the single source.
 
 Report: `+ CLAUDE.md created (security-only rules)`
 
@@ -279,20 +244,20 @@ Copy infrastructure files from source to target:
 
 | File | If Missing in Target | If Exists in Target |
 |------|---------------------|---------------------|
-| `CLAUDE.local.md` | Copy from source | Skip |
-| `claude-mastery-project.conf` | Copy from source | Skip |
+| `CLAUDE.local.md` | Create from the `LOCALMD_EOF` block in `scripts/scaffold-clean.sh` (the kit's own file is personal) | Skip |
+| `claude-mastery-project.conf` | Copy from source (Node, Go and Python web stacks only; skip for other projects) | Skip |
 | `docs/PROJECT_CONTEXT.md` | Create with starter template | Skip |
 | `docs/ARCHITECTURE_SUMMARY.md` | Create with starter template | Skip |
-| `docs/ARCHITECTURE.md` | Copy | Skip |
-| `docs/INFRASTRUCTURE.md` | Copy | Skip |
-| `docs/DECISIONS.md` | Copy | Skip |
-| `.env.example` | Copy from source | Merge: read both line by line, add lines from source whose key name (before `=`) doesn't exist in target. Append missing lines at end. |
-| `.gitignore` | Copy from source | Merge: add lines from source that don't exist in target. Ensure `.env`, `CLAUDE.local.md`, `_ai_temp/` are present. |
-| `.dockerignore` | Copy from source | Merge: add lines from source that don't exist in target. |
+| `docs/ARCHITECTURE.md` | Create from the blank template in `scripts/scaffold-clean.sh` (the `ARCH_EOF` block). Never copy the kit's own `docs/` file: it describes the starter kit, not the project. | Skip |
+| `docs/INFRASTRUCTURE.md` | Create from the blank template in `scripts/scaffold-clean.sh` (the `INFRA_EOF` block). Never copy the kit's own `docs/` file: it describes the starter kit, not the project. | Skip |
+| `docs/DECISIONS.md` | Create from the blank template in `scripts/scaffold-clean.sh` (the `DEC_EOF` block). Never copy the kit's own `docs/` file: it describes the starter kit, not the project. | Skip |
+| `.env.example` | Copy from source (Node, Go and Python web stacks only; skip for Swift, document, and script projects) | Merge: read both line by line, add lines from source whose key name (before `=`) doesn't exist in target. Append missing lines at end. |
+| `.gitignore` | The engine creates it with the managed entries; do not copy the kit's own `.gitignore` | The engine adds the managed entries. Also ensure `.env`, `CLAUDE.local.md`, `_ai_temp/` are present. |
+| `.dockerignore` | Copy from source (only if the project uses Docker) | Merge: add lines from source that don't exist in target. |
 
 Create `docs/` directory if it doesn't exist before creating or copying docs.
 
-If `docs/PROJECT_CONTEXT.md` is missing, create it with:
+If `docs/PROJECT_CONTEXT.md` is missing, create it with the following. In the Key Commands table use the project's real commands (`pnpm dev`, `pnpm test`, ... for a Node project; for other stacks write the build, run and test commands, or leave the one placeholder row):
 
 ```markdown
 # Project Context
@@ -300,10 +265,7 @@ If `docs/PROJECT_CONTEXT.md` is missing, create it with:
 ## Key Commands
 | Command | What it does |
 |---------|-------------|
-| `pnpm dev` | Start dev server |
-| `pnpm test` | Run all tests |
-| `pnpm build` | Build for production |
-| `pnpm typecheck` | TypeScript type-check |
+| (add this project's build, run and test commands) | |
 
 ## Feature → Doc Lookup
 
