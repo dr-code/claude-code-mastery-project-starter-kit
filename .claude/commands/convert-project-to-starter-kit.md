@@ -161,7 +161,7 @@ Only ask about categories where the target has existing files. Use AskUserQuesti
   - No, leave my CLAUDE.md untouched
 
 **Q6: settings.json** (only if target has existing `.claude/settings.json`)
-- "Your project has a .claude/settings.json. Add the starter-kit project hooks to it? Hooks you already have are kept; a hook already wired through ~/.claude/hooks is moved to the project-local path instead of being added twice."
+- "Your project has a .claude/settings.json. Add the starter-kit project hooks to it? Hooks you already have are kept; a hook already wired through ~/.claude/hooks or a relative .claude/hooks path is rewritten to the CLAUDE_PROJECT_DIR form (works from any subfolder) instead of being added twice."
   - Yes, add missing hooks — keeps yours (Recommended)
   - No, leave it untouched
 
@@ -434,30 +434,16 @@ If no feature files were copied (user opted out of language-specific files), wri
 
 ## Step 8 — Register in Project Registry
 
-1. Read `~/.claude/starter-kit-projects.json`
-   - If file doesn't exist → create with `{"projects":[]}`
-   - If file exists but is invalid JSON → create fresh
+All registry reads and writes go through `scripts/registry.mjs` in the starter kit (run it from the kit folder, or use the kit path saved in `~/.claude/starter-kit-source-path`). It reads every shape the file has taken, always writes `{"projects": [...]}`, backs the file up before repairing it, and refuses to overwrite a file that is not valid JSON. Never edit the registry by hand or rewrite it yourself.
 
-2. Check if a project with the same `path` already exists in the `projects` array:
-   - **Yes** → Update the existing entry: set `profile` to `"converted"`, update `convertedAt` to current ISO timestamp
-   - **No** → Add a new entry
-
-3. Entry format:
-```json
-{
-  "name": "<directory-name-of-target>",
-  "path": "<absolute-path-to-target>",
-  "profile": "converted",
-  "language": "<detected-language>",
-  "framework": "unknown",
-  "database": "unknown",
-  "createdAt": "<current-ISO-timestamp>"
-}
+```bash
+node "$SOURCE/scripts/registry.mjs" add --name "<directory-name-of-target>" --path "<absolute-path-to-target>" \
+  --profile converted --language "<detected-language>" --framework unknown --database unknown
 ```
 
-4. Write updated registry to `~/.claude/starter-kit-projects.json`
+If the path is already registered, the entry is updated (its `createdAt` is kept). If the tool reports that the registry is not valid JSON, STOP and tell the user; do NOT create a fresh file, because that would erase every other project in it.
 
-5. Save starter kit source path for future use:
+2. Save starter kit source path for future use:
    Write `$SOURCE` to `~/.claude/starter-kit-source-path`
 
 ---

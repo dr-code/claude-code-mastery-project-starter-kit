@@ -4,25 +4,43 @@
       {
         "matcher": "Bash",
         "hooks": [
-          { "type": "command", "command": "bash .claude/hooks/check-rybbit.sh" },
-          { "type": "command", "command": "bash .claude/hooks/check-branch.sh" },
-          { "type": "command", "command": "bash .claude/hooks/check-ports.sh" },
-          { "type": "command", "command": "bash .claude/hooks/check-e2e.sh" }
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR}\"/.claude/hooks/check-rybbit.sh"
+          },
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR}\"/.claude/hooks/check-branch.sh"
+          },
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR}\"/.claude/hooks/check-ports.sh"
+          },
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR}\"/.claude/hooks/check-e2e.sh"
+          }
         ]
       }
     ],
     "PostToolUse": [
       {
-        "matcher": "Write",
+        "matcher": "Write|Edit",
         "hooks": [
-          { "type": "command", "command": "bash .claude/hooks/lint-on-save.sh" }
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR}\"/.claude/hooks/lint-on-save.sh"
+          }
         ]
       }
     ],
     "Stop": [
       {
         "hooks": [
-          { "type": "command", "command": "bash .claude/hooks/check-env-sync.sh" }
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR}\"/.claude/hooks/check-env-sync.sh"
+          }
         ]
       }
     ]

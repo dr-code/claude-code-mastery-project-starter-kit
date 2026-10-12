@@ -39,6 +39,10 @@ const manifest: Manifest = JSON.parse(
   fs.readFileSync(path.join(ROOT, 'starter-kit-manifest.json'), 'utf8'),
 );
 
+// Project hooks are wired through the project-root variable so they work from any subfolder.
+const hookCmd = (name: string) => `bash "\${CLAUDE_PROJECT_DIR}"/.claude/hooks/${name}`;
+const scriptOf = (cmd: string) => /hooks\/([\w.-]+)\s*$/.exec(cmd)?.[1] ?? '';
+
 const FORBIDDEN_IN_PROJECT_SETTINGS = /block-secrets|verify-no-secrets|check-rulecatch|plannotator/;
 
 function wiredCommands(settingsPath: string): string[] {
@@ -83,6 +87,22 @@ describe('starter-kit-manifest.json', () => {
     }
   });
 
+  it("the kit's own .claude/settings.json is exactly the default project template", () => {
+    const own = JSON.parse(fs.readFileSync(path.join(ROOT, '.claude/settings.json'), 'utf8'));
+    const template = JSON.parse(fs.readFileSync(path.join(ROOT, 'templates/project-settings.json'), 'utf8'));
+    expect(own).toEqual(template);
+  });
+
+  it('lint-on-save fires on both Write and Edit in every settings template', () => {
+    for (const profile of Object.values(manifest.profiles)) {
+      const t = JSON.parse(fs.readFileSync(path.join(ROOT, profile.settingsTemplate), 'utf8'));
+      const group = t.hooks.PostToolUse.find((g: { hooks: { command: string }[] }) =>
+        g.hooks.some((h) => h.command.includes('lint-on-save')),
+      );
+      expect(group.matcher).toBe('Write|Edit');
+    }
+  });
+
   it('keeps project and global hooks disjoint', () => {
     const overlap = manifest.files.hooks.project.filter((h) => manifest.files.hooks.global.includes(h));
     expect(overlap).toEqual([]);
@@ -98,7 +118,8 @@ describe('starter-kit-manifest.json', () => {
       const cmds = wiredCommands(path.join(ROOT, profile.settingsTemplate));
       for (const cmd of cmds) {
         expect(cmd, `${name}: ${cmd}`).not.toMatch(FORBIDDEN_IN_PROJECT_SETTINGS);
-        const file = (cmd.split(' ')[1] ?? '').replace('.claude/hooks/', '');
+        const file = scriptOf(cmd);
+        expect(cmd, `${name}: ${cmd}`).toBe(hookCmd(file));
         expect(allowed, `${name} wires ${file}`).toContain(file);
       }
     }
@@ -159,7 +180,8 @@ describe('kit-apply.sh', () => {
     const settings = path.join(project, '.claude/settings.json');
     for (const cmd of wiredCommands(settings)) {
       expect(cmd).not.toMatch(FORBIDDEN_IN_PROJECT_SETTINGS);
-      expect(fs.existsSync(path.join(project, cmd.split(' ')[1] ?? ''))).toBe(true);
+      expect(cmd).toBe(hookCmd(scriptOf(cmd)));
+      expect(fs.existsSync(path.join(project, '.claude/hooks', scriptOf(cmd)))).toBe(true);
     }
 
     const gitignore = fs.readFileSync(path.join(project, '.gitignore'), 'utf8').split('\n');
@@ -208,9 +230,7 @@ describe('kit-apply.sh', () => {
     const r = run('--profile', 'clean');
     expect(r.status, r.stderr).toBe(0);
     expect(fs.readdirSync(path.join(project, '.claude/hooks'))).toEqual(['lint-on-save.sh']);
-    expect(wiredCommands(path.join(project, '.claude/settings.json'))).toEqual([
-      'bash .claude/hooks/lint-on-save.sh',
-    ]);
+    expect(wiredCommands(path.join(project, '.claude/settings.json'))).toEqual([hookCmd('lint-on-save.sh')]);
   });
 
   it('rejects an unknown profile', () => {
@@ -264,13 +284,39 @@ describe('kit-apply.sh', () => {
       expect(fs.readFileSync(path.join(project, '.claude/commands/my-own.md'), 'utf8')).toBe('user command\n');
     });
 
-    it('migrates a project hook wired under ~/.claude to the local path instead of duplicating it', () => {
+    it.each([
+      ['~/.claude path', 'bash ~/.claude/hooks/check-rybbit.sh'],
+      ['project-relative path (fails from a subfolder)', 'bash .claude/hooks/check-rybbit.sh'],
+    ])('migrates a project hook wired through a %s to the project-root form instead of duplicating it', (_label, legacy) => {
       seedExisting();
+      const settings = path.join(project, '.claude/settings.json');
+      fs.writeFileSync(
+        settings,
+        JSON.stringify({ hooks: { PreToolUse: [{ matcher: 'Bash', hooks: [{ type: 'command', command: legacy }] }] } }),
+      );
       expect(run().status).toBe(0);
-      const cmds = commandsIn(path.join(project, '.claude/settings.json'));
-      expect(cmds.filter((c) => c.includes('check-rybbit.sh'))).toEqual(['bash .claude/hooks/check-rybbit.sh']);
+      const cmds = commandsIn(settings);
+      expect(cmds.filter((c) => c.includes('check-rybbit.sh'))).toEqual([hookCmd('check-rybbit.sh')]);
       expect(new Set(cmds).size).toBe(cmds.length);
-      expect(cmds.some((c) => c.includes('~/.claude'))).toBe(false);
+      expect(cmds.some((c) => c.includes('~/.claude') || /(^|\s)\.claude\/hooks/.test(c))).toBe(false);
+    });
+
+    it('moves a hook that sits under a different matcher to the template matcher, without duplicating it', () => {
+      fs.mkdirSync(path.join(project, '.claude'), { recursive: true });
+      fs.writeFileSync(
+        path.join(project, '.claude/settings.json'),
+        JSON.stringify({
+          hooks: { PostToolUse: [{ matcher: 'Write', hooks: [{ type: 'command', command: hookCmd('lint-on-save.sh') }] }] },
+        }),
+      );
+      const r = run();
+      expect(r.status, r.stderr + r.stdout).toBe(0);
+      const post = JSON.parse(fs.readFileSync(path.join(project, '.claude/settings.json'), 'utf8')).hooks.PostToolUse;
+      const lintGroups = post.filter((g: { hooks: { command: string }[] }) => g.hooks.some((h) => h.command.includes('lint-on-save')));
+      expect(lintGroups).toHaveLength(1);
+      expect(lintGroups[0].matcher).toBe('Write|Edit');
+      expect(post.every((g: { hooks: unknown[] }) => g.hooks.length > 0)).toBe(true);
+      expect(changesOf(run().stdout)).toBe(0);
     });
 
     it('reports changes=0 on a second run', () => {

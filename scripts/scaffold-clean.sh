@@ -464,32 +464,10 @@ git -C "$PROJECT_PATH" add -A
 git -C "$PROJECT_PATH" commit -q -m "Initial clean project scaffold"
 
 # Register in project registry
-python3 << PYEOF
-import json, os
-from datetime import datetime, timezone
-
-registry = "$REGISTRY"
-if os.path.exists(registry):
-    with open(registry) as f:
-        data = json.load(f)
-else:
-    os.makedirs(os.path.dirname(registry), exist_ok=True)
-    data = {"projects": []}
-
-data["projects"].append({
-    "name": "$PROJECT_NAME",
-    "path": os.path.realpath("$PROJECT_PATH"),
-    "profile": "clean",
-    "language": "none",
-    "framework": "none",
-    "database": "none",
-    "createdAt": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-})
-
-with open(registry, "w") as f:
-    json.dump(data, f, indent=2)
-    f.write("\n")
-PYEOF
+STARTER_KIT_REGISTRY="$REGISTRY" node "$STARTER_KIT/scripts/registry.mjs" add \
+  --name "$PROJECT_NAME" --path "$(cd "$PROJECT_PATH" && pwd -P)" \
+  --profile clean --language none --framework none --database none \
+  || echo "WARNING: project created but could not be registered. Fix $REGISTRY, then run: node scripts/registry.mjs add --path $PROJECT_PATH"
 
 # ── Summary ────────────────────────────────────────────────────────────────────
 END_NS=$(date +%s%N)

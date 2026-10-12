@@ -63,8 +63,8 @@ If no feature names and no `--list`: ask via AskUserQuestion:
 
 ## Step 2 — Select Target
 
-1. Read `~/.claude/starter-kit-projects.json`
-   - If file doesn't exist or empty → error: "No projects found. Use `/new-project` to create one first."
+1. Run `node scripts/registry.mjs list --json` from the starter kit folder
+   - If the list is empty → error: "No projects found. Use `/new-project` to create one first."
 
 2. **Smart default:** If CWD is inside a registered project directory → offer it first
 

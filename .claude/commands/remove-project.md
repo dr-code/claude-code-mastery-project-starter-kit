@@ -15,7 +15,7 @@ Remove a project from the starter kit registry and optionally delete its files f
 
 ### 1. Read the registry
 
-Read `~/.claude/starter-kit-projects.json`. If the file does not exist, tell the user:
+Run `node scripts/registry.mjs list --json` from the starter kit folder. If it lists nothing, tell the user:
 
 > No projects have been created yet. Nothing to remove.
 
@@ -58,9 +58,7 @@ Ask via AskUserQuestion: "What do you want to do with this project?"
 
 ### 5a. If "Remove from registry only"
 
-- Read `~/.claude/starter-kit-projects.json`
-- Remove the matching project entry from the `projects` array
-- Write the updated registry back
+- Run `node scripts/registry.mjs remove --path "<path>"` (it backs the registry up first and removes only that entry)
 - Confirm: "Removed `<name>` from the project registry. Files at `<path>` are untouched."
 
 ### 5b. If "Delete everything"
@@ -79,7 +77,7 @@ Ask via AskUserQuestion: "Are you sure you want to permanently delete `<path>` a
    - Check for uncommitted git changes: `cd <path> && git status --porcelain 2>/dev/null`
    - If there are uncommitted changes, WARN the user and ask again: "This project has uncommitted changes. Are you SURE you want to delete?"
    - Delete the directory: `rm -rf <path>`
-3. Remove the entry from `~/.claude/starter-kit-projects.json`
+3. Run `node scripts/registry.mjs remove --path "<path>"`
 4. Confirm: "Deleted `<path>` and removed `<name>` from the registry."
 
 **If the directory doesn't exist:**
@@ -92,4 +90,4 @@ Ask via AskUserQuestion: "Are you sure you want to permanently delete `<path>` a
 - ALWAYS warn about uncommitted changes before deletion
 - NEVER delete directories outside the registered path
 - ALWAYS show what will be deleted before doing it
-- The registry itself (`~/.claude/starter-kit-projects.json`) is never deleted — only entries are removed
+- The registry itself (`~/.claude/starter-kit-projects.json`) is never deleted — only entries are removed. All registry reads and writes go through `scripts/registry.mjs` in the starter kit (run it from the kit folder, or use the kit path saved in `~/.claude/starter-kit-source-path`). It reads every shape the file has taken, always writes `{"projects": [...]}`, backs the file up before repairing it, and refuses to overwrite a file that is not valid JSON. Never edit the registry by hand or rewrite it yourself.
