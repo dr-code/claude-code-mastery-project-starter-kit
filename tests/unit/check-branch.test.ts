@@ -138,6 +138,50 @@ describe('check-branch.sh', () => {
     });
   });
 
+  describe('variables assigned in the same command', () => {
+    it('resolves P=<dir>; git -C "$P" commit in both directions', () => {
+      expect(blocked(onMain, `P=${onFeature}; git -C "$P" commit -m "x"`)).toBe(false);
+      expect(blocked(onFeature, `P=${onMain}; git -C "$P" commit -m "x"`)).toBe(true);
+    });
+
+    it('resolves export, braces, quotes, and cd "$P"', () => {
+      expect(blocked(onFeature, `export P=${onMain} && cd "$P" && git commit -m "x"`)).toBe(true);
+      expect(blocked(onFeature, `P=${onMain}; git -C \${P} commit -m "x"`)).toBe(true);
+      expect(blocked(onFeature, `P='${onMain}'; git -C "$P" commit -m "x"`)).toBe(true);
+      expect(blocked(onMain, `P="${onFeature}"; cd $P && git commit -m "x"`)).toBe(false);
+    });
+
+    it('does not let a short name clobber a longer one ($P vs $PROJECT_PATH)', () => {
+      expect(blocked(onFeature, `P=${onFeature}; PROJECT_PATH=${onMain}; git -C "$PROJECT_PATH" commit -m "x"`)).toBe(true);
+      expect(blocked(onMain, `P=${onMain}; PROJECT_PATH=${onFeature}; git -C "$PROJECT_PATH" commit -m "x"`)).toBe(false);
+    });
+
+    it('still fails safe when a variable cannot be resolved', () => {
+      // never assigned in this command: falls back to the session folder
+      expect(blocked(onMain, 'git -C "$NOPE" commit -m "x"')).toBe(true);
+      expect(blocked(onFeature, 'git -C "$NOPE" commit -m "x"')).toBe(false);
+      // assigned from a command substitution: not resolved
+      expect(blocked(onMain, 'P=$(pwd); git -C "$P" commit -m "x"')).toBe(true);
+    });
+
+    it('does not guess when a name is assigned two different values', () => {
+      expect(blocked(onFeature, `P=${onMain}; P=${onFeature}; git -C "$P" commit -m "x"`)).toBe(false);
+      expect(blocked(onMain, `P=${onFeature}; P=${onMain}; git -C "$P" commit -m "x"`)).toBe(true);
+    });
+  });
+
+  describe('the new-project scenario: session on main, first commit in a brand-new repository', () => {
+    it('allows the initial commit when the path is literal or assigned in the same command', () => {
+      expect(blocked(onMain, `git -C ${fresh} commit -m "Initial project scaffold"`)).toBe(false);
+      expect(blocked(onMain, `cd ${fresh} && git add -A && git commit -m "Initial project scaffold"`)).toBe(false);
+      expect(blocked(onMain, `PROJECT_PATH=${fresh}; git -C "$PROJECT_PATH" add -A && git -C "$PROJECT_PATH" commit -m "Initial project scaffold"`)).toBe(false);
+    });
+
+    it('still blocks a real commit on main from the same session', () => {
+      expect(blocked(onMain, `git -C ${onMain} commit -m "oops"`)).toBe(true);
+    });
+  });
+
   describe('several commands in one line', () => {
     it('blocks if ANY commit in the line targets main', () => {
       const cmd = `git commit -m "a" && cd ${onMain} && git commit -m "b"`;

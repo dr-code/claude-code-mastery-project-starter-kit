@@ -405,6 +405,6 @@ fi
 if [ "$DRY_RUN" -eq 1 ]; then
   echo "Dry run complete: nothing was written."
 else
-  echo "Next: ask Claude to run the beacon skill-discovery step for this project."
+  echo "Optional next step: Beacon skill discovery (see \"Beacon Skill Discovery\" in .claude/commands/new-project.md)."
 fi
 echo "RESULT: changes=${CHANGES}"

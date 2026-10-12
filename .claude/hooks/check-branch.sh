@@ -7,7 +7,9 @@
 # folder the session started in. For every `git commit` in the command it follows:
 #   - `cd <dir> && ... git commit`   (relative paths, ~, $HOME and quotes)
 #   - `git -C <dir> commit`          (also with -c options in between)
-# and falls back to the current folder when neither is present.
+# and falls back to the current folder when neither is present. A variable assigned in
+# the same command (`P=/path; git -C "$P" commit`) is resolved; one it cannot resolve is
+# treated as unknown, so the check falls back to the current folder (the safe direction).
 #
 # Based on Claude Code Mastery Guides V1-V5 by TheDecipherist
 
@@ -25,6 +27,57 @@ fi
 if [ -z "$COMMAND" ]; then
     exit 0
 fi
+
+# Replace $NAME and ${NAME} with the value of a literal NAME=value assignment made in
+# the same command, so `P=/path/to/repo; git -C "$P" commit` is judged by /path/to/repo.
+# Not resolved (the reference is left as it is, and the guard falls back to the
+# current folder): values built with $ or backticks, names assigned more than once
+# with different values, and variables set in an earlier command.
+resolve_vars() {
+    local cmd="$1" pairs pair name val seen=" " conflicts=" " values=""
+    pairs=$(printf '%s\n' "$cmd" | grep -oE "(^|[;&|[:space:]])(export[[:space:]]+)?[A-Za-z_][A-Za-z0-9_]*=(\"[^\"]*\"|'[^']*'|[^[:space:];&|]+)" | sed -E 's/^[;&|[:space:]]+//; s/^export[[:space:]]+//')
+    while IFS= read -r pair; do
+        [ -n "$pair" ] || continue
+        name="${pair%%=*}"; val="${pair#*=}"
+        case "$val" in
+            \"*\") val="${val#\"}"; val="${val%\"}" ;;
+            \'*\') val="${val#\'}"; val="${val%\'}" ;;
+        esac
+        case "$seen" in
+            *" $name "*)
+                case "$values" in *"|$name=$val|"*) ;; *) conflicts="$conflicts$name " ;; esac ;;
+            *) seen="$seen$name " ;;
+        esac
+        values="$values|$name=$val|"
+    done <<< "$pairs"
+    while IFS= read -r pair; do
+        [ -n "$pair" ] || continue
+        name="${pair%%=*}"; val="${pair#*=}"
+        case "$val" in
+            \"*\") val="${val#\"}"; val="${val%\"}" ;;
+            \'*\') val="${val#\'}"; val="${val%\'}" ;;
+        esac
+        case "$conflicts" in *" $name "*) continue ;; esac
+        case "$val" in *'$'*|*'`'*) continue ;; esac
+        cmd=$(printf '%s' "$cmd" | awk -v n="$name" -v v="$val" '
+            function lit(s, pat, rep,    out, i, c, brace) {
+                brace = (substr(pat, 2, 1) == "{")
+                out = ""
+                while ((i = index(s, pat)) > 0) {
+                    c = substr(s, i + length(pat), 1)
+                    if (brace || c == "" || c !~ /[A-Za-z0-9_]/) { out = out substr(s, 1, i - 1) rep }
+                    else { out = out substr(s, 1, i + length(pat) - 1) }
+                    s = substr(s, i + length(pat))
+                }
+                return out s
+            }
+            BEGIN { RS = "\001" }
+            { s = lit($0, "${" n "}", v); s = lit(s, "$" n, v); printf "%s", s }')
+    done <<< "$pairs"
+    printf '%s' "$cmd"
+}
+
+COMMAND=$(resolve_vars "$COMMAND")
 
 # `git [options] commit` as a whole word (does not match commit-tree, commit-graph, ...).
 COMMIT_RE='(^|[[:space:]])git[[:space:]]+((-c[[:space:]]+[^[:space:]]+|-C[[:space:]]+("[^"]*"|'"'"'[^'"'"']*'"'"'|[^[:space:]]+)|--[a-z-]+(=[^[:space:]]*)?)[[:space:]]+)*commit([[:space:]]|$)'
