@@ -431,6 +431,32 @@ describe('command docs stay wired to the engine', () => {
     expect(t).not.toMatch(/from the starter kit CLAUDE\.md/);
   });
 
+  it('never tells Claude to copy the starter kit\'s own docs into a project', () => {
+    for (const name of ['convert-project-to-starter-kit', 'update-project']) {
+      const t = command(name);
+      expect(t, name).not.toMatch(/docs\/(ARCHITECTURE|INFRASTRUCTURE|DECISIONS)\.md`\s*\|\s*Copy\s*\|/);
+      expect(t, name).toMatch(/scaffold-clean\.sh/);
+    }
+  });
+
+  it('points at blank templates that really exist in scaffold-clean.sh', () => {
+    const clean = read('scripts/scaffold-clean.sh');
+    for (const marker of ['CLAUDEMD_EOF', 'LOCALMD_EOF', 'ARCH_EOF', 'INFRA_EOF', 'DEC_EOF']) {
+      expect(clean, marker).toContain(`<< '${marker}'`);
+    }
+    const convert = command('convert-project-to-starter-kit');
+    for (const marker of ['CLAUDEMD_EOF', 'LOCALMD_EOF', 'ARCH_EOF', 'INFRA_EOF', 'DEC_EOF']) {
+      expect(convert, marker).toContain(marker);
+    }
+  });
+
+  it('update-project pre-flight ignores the machine-generated files its own ignore entries cover', () => {
+    const t = command('update-project');
+    for (const generated of ['.mcp.json', '.tessera', '.mdd']) {
+      expect(t, generated).toContain(`':(exclude)${generated}'`);
+    }
+  });
+
   it('documents every option kit-apply.sh parses in its usage header', () => {
     const script = read('scripts/kit-apply.sh');
     const header = script.split('\nset -euo pipefail')[0];

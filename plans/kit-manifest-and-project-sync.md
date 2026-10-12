@@ -1,6 +1,6 @@
 # Plan: Kit manifest and uniform project sync
 
-Status: Phases 1 to 3 complete and merged. Phase 5 rollout under way: onshift, frictionlog and onshift-native are synced on review branches; the hook-path, registry and branch-guard fixes are in the open kit PR for `fix/registry-branch-hook-settings`. Five dirty repos and six unconverted projects remain.
+Status: Phases 1 to 3 complete and merged. Phase 5 rollout is done for every project that exists: all converted and all synced projects carry the new layer. Eight git projects are on review branches or merged, and five non-git projects are converted in backup mode (FinHub is an empty folder and was skipped). Remaining: the user merges the sync branches, and Phase 4 (tessera upstream gap report, README/install wording) and Phase 6 (final verification).
 
 Goal: every project (new and existing) gets the same commands, skills, hooks, gitignore entries, and CLAUDE.md blocks, driven by one manifest. Includes Beacon, /mdd, Tessera, and the Superpowers + Plannotator workflow.
 
@@ -45,27 +45,32 @@ Goal: every project (new and existing) gets the same commands, skills, hooks, gi
 - The project registry file was a nested array, not `{"projects": [...]}`, so the scaffold scripts crashed on it at their final step. Repaired (9 projects kept, original backed up); the scaffold scripts now go through `registry.mjs`. Two registered folders no longer exist (`remnoteplugin`, `jarvis`).
 - `check-branch.sh` skipped the check entirely for `git -C <dir> commit` (its first test was `git\s+commit`), wrongly blocked `git commit-tree`, and judged `cd <dir> && git commit` by the session folder. Rewritten with 18 tests; the old hook fails 12 of them.
 - The settings templates (copied from the old scaffold) ran `lint-on-save` on `Write` only, although the existing test and the kit's own settings say `Write` and `Edit`. Fixed; the engine moves an existing hook to the template matcher.
+- Committing the five projects' uncommitted work found sensitive data that had to be kept out: personalfinance had Chrome login-session profiles, account and transaction dumps, a HAR capture, and ingestion logs under `tmp/` and `logs/`; nuklius had archived env files, `.npmrc` files, a session secret, and SQLite databases under `_archive/`. Both are now ignored in the repo's own `.gitignore` (nuklius's root rule `!*` un-ignores everything, including the global transcript ignore, so explicit entries were added after it). A pre-commit check also caught a real name in a source comment, which was removed; absolute home paths in nine nuklius docs were rewritten to repo-relative paths.
+- The convert and update commands told Claude to copy the kit's own architecture docs, a shortened `CLAUDE.md`, and web-stack extras into every project. Fixed to use the blank templates in `scripts/scaffold-clean.sh` and to skip web extras for non-web projects.
+- `/update-project` counted the machine-generated `.mcp.json` as uncommitted work; its pre-flight now ignores the paths its own ignore entries cover.
+- A guard that cannot resolve a shell variable in `git -C $VAR commit` falls back to the session folder (the safe direction); use literal paths in commit commands.
+- Nuklius's `helper` tests could not run here: its `better-sqlite3` native module was built for an older Node (ABI 141) than the current default (ABI 147). Three other Nx test projects passed. Fix on the maintainer's side: rebuild or reinstall that module with the intended Node.
 
-## Existing project states (dry run of the engine, 2026-10-09)
+## Project states (after rollout, 2026-10-12)
 
-| Project | Git | Working tree | `.claude/` and `CLAUDE.md` | Dry-run result |
-|---|---|---|---|---|
-| frictionlog | yes | clean | both | SYNCED on branch `chore/starter-kit-sync-20261009` (not merged) |
-| onshift | yes | clean | both | SYNCED and merged (first sync); corrective hook-path sync on branch `chore/starter-kit-sync-20261009-hook-paths` (not merged) |
-| onshift-native | yes | clean | both | SYNCED on branch `chore/starter-kit-sync-20261009` (not merged); first time it has settings.json, skills, agents and hooks |
-| lumiris | yes | dirty | both | 17 commands new (has none); redundant global hooks |
-| nodulerisk | yes | dirty | both | 1 updated; redundant global hooks |
-| nuklius | yes | dirty | both | 1 updated; redundant global hooks |
-| personalfinance | yes | dirty | both | 5 updated; redundant global hooks |
-| taxplanprep | yes | dirty | both | 1 updated, 3 custom; redundant global hooks |
-| workout | no | n/a | `.claude/` only | needs convert (no `CLAUDE.md`) |
-| calibre-web-migration | no | n/a | `.claude/` only | needs convert (no `CLAUDE.md`) |
-| FinHub | no | n/a | neither | needs convert |
-| frictionlog-ios | no | n/a | neither | needs convert |
-| nodulerisk-ios | no | n/a | neither | needs convert |
-| onshift-user-manual | no | n/a | neither | needs convert |
+| Project | Git | State |
+|---|---|---|
+| onshift | yes | synced and merged (two syncs, the second a hook-path correction) |
+| frictionlog | yes | synced and merged |
+| onshift-native | yes | synced and merged |
+| lumiris | yes | work committed to `main`; sync on branch `chore/starter-kit-sync-20261012` (not merged) |
+| nodulerisk | yes | work committed to `main`; sync on branch `chore/starter-kit-sync-20261012` (not merged) |
+| nuklius | yes | work committed to `main`; sync on branch `chore/starter-kit-sync-20261012` (not merged) |
+| personalfinance | yes | work committed to `main`; sync on branch `chore/starter-kit-sync-20261012` (not merged) |
+| taxplanprep | yes | work committed to `main`; sync on branch `chore/starter-kit-sync-20261012` (not merged) |
+| frictionlog-ios | no | converted in backup mode (core layer) |
+| nodulerisk-ios | no | converted in backup mode (core layer) |
+| onshift-user-manual | no | converted in backup mode (core layer) |
+| workout | no | converted in backup mode (core layer) |
+| calibre-web-migration | no | converted in backup mode (core layer) |
+| FinHub | no | empty folder; skipped |
 
-The dry runs wrote nothing (file counts identical before and after). Dirty repos are skipped until the user commits or stashes. Recheck states before applying.
+Non-git projects have no git undo; each conversion saved a backup under the home `.claude/starter-kit-backups/`. "Core layer" = the `.claude` layer, a security-only `CLAUDE.md`, `CLAUDE.local.md`, the docs templates, and the managed ignore entries; the web-stack extras (`.env.example`, `.dockerignore`, the kit conf) were not added.
 
 ## Phases
 
@@ -102,16 +107,14 @@ The dry runs wrote nothing (file counts identical before and after). Dirty repos
 - [ ] Read-only gap report: bundled skills and hooks versus upstream obra/superpowers and plannotator
 - [ ] Apply approved skill and hook updates with tests
 
-### Phase 5: Rollout (in progress)
-- [x] Merge the open PRs so rollout uses them (kit PR #4, tessera PR #15)
+### Phase 5: Rollout (done except merging the review branches)
+- [x] Merge the open PRs so rollout uses them (kit PR #4, #5; tessera PR #15)
 - [x] Install the Tessera plugin on the user's machine; remove the direct Plannotator hooks from the kit's local `settings.json`
-- [x] onshift synced (first sync merged by the user); redone hook-path correction on a new branch
-- [x] frictionlog and onshift-native synced on review branches
-- [ ] User reviews and merges the three review branches (`git -C <project> switch <original branch> && git -C <project> merge <sync branch>`)
-- [ ] Merge the kit PR for the registry, branch-guard, settings and hook-path fixes
-- [ ] User commits or stashes the five dirty repos (lumiris, nodulerisk, nuklius, personalfinance, taxplanprep), then each is dry-run and synced one at a time; these five currently use `~/.claude/hooks/...` and will be migrated to the `${CLAUDE_PROJECT_DIR}` form
-- [ ] Run `/convert-project-to-starter-kit` for the six non-git or unconverted projects (backup mode for non-git)
-- [ ] Decide what to do with the two registry entries whose folders no longer exist
+- [x] onshift, frictionlog and onshift-native synced and merged by the user
+- [x] The five dirty repos had their uncommitted work committed and landed on `main` (sensitive data kept out; see findings), then synced on review branches
+- [x] The five non-git projects converted in backup mode; FinHub (empty) skipped; the two registry entries whose folders no longer existed were removed
+- [ ] User reviews and merges the five review branches (`git -C <project> switch main && git -C <project> merge chore/starter-kit-sync-20261012`)
+- [ ] Run each synced project once in Claude Code to confirm the `${CLAUDE_PROJECT_DIR}` hooks and the plugin load without errors
 
 ### Phase 6: Verification
 - [ ] Sync a copy of onshift in a scratch directory; a second sync produces no diff
