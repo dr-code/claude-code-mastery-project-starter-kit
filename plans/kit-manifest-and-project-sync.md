@@ -1,6 +1,6 @@
 # Plan: Kit manifest and uniform project sync
 
-Status: Phases 1 to 3 complete and merged. Phase 5 rollout is done for every project that exists: all converted and all synced projects carry the new layer. Eight git projects are on review branches or merged, and five non-git projects are converted in backup mode (FinHub is an empty folder and was skipped). Remaining: the user merges the sync branches, and Phase 4 (tessera upstream gap report, README/install wording) and Phase 6 (final verification).
+Status: Phases 1 to 3 and the rollout are done. The instruction-driven `/new-project` modes (Go, Python, Vue, Angular) were executed end to end in a sandbox and the problems they exposed are fixed in the kit PR for `fix/mode-test-findings`. Tessera: install docs and test isolation are in tessera PR #16 (the PyPI name `tessera` is an unrelated project), merged branches are cleaned up, and the upstream comparison is recorded below. Open: the user decisions on whether to re-base tessera's bundled skills on Superpowers v7.0.0, and one manual check in a cloud session.
 
 Goal: every project (new and existing) gets the same commands, skills, hooks, gitignore entries, and CLAUDE.md blocks, driven by one manifest. Includes Beacon, /mdd, Tessera, and the Superpowers + Plannotator workflow.
 
@@ -51,26 +51,33 @@ Goal: every project (new and existing) gets the same commands, skills, hooks, gi
 - A guard that cannot resolve a shell variable in `git -C $VAR commit` falls back to the session folder (the safe direction); use literal paths in commit commands.
 - Nuklius's `helper` tests could not run here: its `better-sqlite3` native module was built for an older Node (ABI 141) than the current default (ABI 147). Three other Nx test projects passed. Fix on the maintainer's side: rebuild or reinstall that module with the intended Node.
 
-## Project states (after rollout, 2026-10-12)
+- **Executed the written modes end to end** (four agents in an offline sandbox: Go, Python, Vue 3, Angular). In all four the starter-kit layer applied correctly: 17 commands, 2 skills, 2 agents, 6 hooks, `settings.json` equal to the template, both managed blocks exactly once, the managed ignore entries, and a registry entry. The instructions themselves had gaps, below. Nothing leaked outside the sandbox (checked), and the real registry changes seen during the run came from five project folders disappearing (lumiris, nuklius, personalfinance, taxplanprep, workout) and their entries being removed, not from the agents.
+- **Branch-guard false positives hit three of four agents**: `git -C "$P" commit` with `P` assigned in the same command could not be resolved, so the guard fell back to the session folder (the kit, on `main`) and blocked an initial commit in a brand-new repository. The Vue agent got around it with git plumbing (`commit-tree`, `update-ref`), which the guard does not cover. Fixed: the guard now resolves same-command assignments (and still fails safe otherwise), the instructions say to commit with a literal absolute path, and they forbid the plumbing workaround.
+- **Spec gaps found by executing the modes** (the first group is fixed; the rest predate this work and are not): fixed: `$(pwd)`/`$PROJECT_PATH` undefined, no stated order for files, `features.json`, the layer, `git init`, commit, and registry (now the Finish Sequence), registry override not mentioned. Not fixed: Docker steps are unconditional in Python while the checklist says "if selected"; no templates for `api/v1/health.py`, `requirements*.txt`, `.env.example`, or the docs in Python; Go and Python have no `CLAUDE.md` template (overview, stack, commands, ports) and the Required Files list is Node-oriented (`tsconfig.json`); `go mod init` has no username fallback; Go's `[go]` profile says Dokploy and MongoDB with no stated precedence over the user's choices; `npm create vue@latest` and `ng new` create a subfolder and are hard-coded to npm; Vue/Angular are told to meet checklist items (`test:kill-ports`, ports 4000-4020, `tests/e2e`) the section never explains how to create.
+- **The PyPI name is taken.** `tessera` on PyPI is an unrelated 2017 project ("A dashboard front end for Graphite"), so `pip install tessera` and `uvx --from tessera` install the wrong software. The README and `install.sh` used them, and `install.sh` installed only the plugin, whose MCP server runs the `tessera` command that nothing installed. Fixed in tessera PR #16 with guard tests. Publishing under this name is impossible without renaming.
+- **Tessera's own tests rewrote a committed fixture** (`test_graph_scan` scanned `tests/fixtures/sample_project`). Fixed in tessera PR #16.
+- **My mistake, caught in review:** a Python rewrite of tessera's README and a test file converted them from CRLF to LF and produced whole-file diffs. Restored with a follow-up commit; the net PR diff is +151/-46. The kit repo has no CRLF files, so it was not affected.
+- **Beacon discovery** (run per stack, read-only): the local index lists 2 task bundles, 8 agents, 1 skill and 3 hooks, leaning towards web work, and records no install commands. Express/React: `backend-architect`, `react-performance-optimization`, `code-reviewer`/`review`, with `dependency-checker` and `architect-review` as weaker fits. Next.js/Prisma: `nextjs-app-router-developer`, `frontend-developer`, `code-reviewer`, `smart-formatting` (it will not format Prisma files). Swift/iOS: nothing in the index covers Swift. Python docs builder and shell scripts: `code-reviewer`/`review` only; `auto-git-add` should be avoided (it stages every edited file, including database backups). Agents run with `beacon <name> "<task>"`; hooks must be wired into `settings.json` by hand. The step is now documented in `new-project.md` with those expectations.
+- **Upstream comparison for tessera's bundled skills** (2026-10-12): obra/superpowers released v7.0.0 on 2026-10-10 (rebuilt brainstorming, new `diagnosing-superpowers` skill; 15 skills). Tessera bundles 14 of upstream's skills plus 5 of its own (`build`, `cleanup`, `codex-review`, `debate`, `plan-review`) and has no `diagnosing-superpowers`. Tessera records no upstream version, so drift cannot be separated into "adapted on purpose" and "stale": for most skills almost none of upstream's lines appear in tessera's copy (for example 295 of 298 lines of `executing-plans`, 449 of 455 of `subagent-driven-development`, 415 of 439 of `writing-skills`; the smallest gaps are `verification-before-completion`, 45 of 79, and `requesting-code-review`, 38 of 65). Plannotator: tessera's `PermissionRequest`/`ExitPlanMode` hook matches upstream's documented hook exactly, and the installed binary still supports `improve-context`; the binary is 0.27.25 and the latest release is 0.28.17. Plannotator also ships its own Claude Code plugin, so installing it alongside tessera duplicates the hooks (tessera ADR-003). Nothing was applied: re-basing 15 skills is a substantial, reviewable change that needs a decision.
+- **Cloud sessions are not tested.** A cloud session cannot be driven from here, and the hooks documentation does not say whether `${CLAUDE_PROJECT_DIR}` is set there. Manual check: open any synced project in a cloud session, run one Bash command, and confirm no hook errors; `echo "$CLAUDE_PROJECT_DIR"` should print the checkout path.
+
+## Project states (2026-10-12)
 
 | Project | Git | State |
 |---|---|---|
 | onshift | yes | synced and merged (two syncs, the second a hook-path correction) |
 | frictionlog | yes | synced and merged |
 | onshift-native | yes | synced and merged |
-| lumiris | yes | work committed to `main`; sync on branch `chore/starter-kit-sync-20261012` (not merged) |
-| nodulerisk | yes | work committed to `main`; sync on branch `chore/starter-kit-sync-20261012` (not merged) |
-| nuklius | yes | work committed to `main`; sync on branch `chore/starter-kit-sync-20261012` (not merged) |
-| personalfinance | yes | work committed to `main`; sync on branch `chore/starter-kit-sync-20261012` (not merged) |
-| taxplanprep | yes | work committed to `main`; sync on branch `chore/starter-kit-sync-20261012` (not merged) |
+| nodulerisk | yes | work committed and synced, both merged to `main` |
 | frictionlog-ios | no | converted in backup mode (core layer) |
 | nodulerisk-ios | no | converted in backup mode (core layer) |
 | onshift-user-manual | no | converted in backup mode (core layer) |
-| workout | no | converted in backup mode (core layer) |
 | calibre-web-migration | no | converted in backup mode (core layer) |
 | FinHub | no | empty folder; skipped |
+| lumiris, nuklius, personalfinance, taxplanprep | yes | their work was committed to `main` and each was synced on a review branch; the folders and their registry entries have since disappeared (the user had said they would likely delete these projects; nothing in this work deleted them) |
+| workout | no | converted in backup mode; the folder no longer exists (not removed by this work; the backup holds only the files the conversion created, not the source) |
 
-Non-git projects have no git undo; each conversion saved a backup under the home `.claude/starter-kit-backups/`. "Core layer" = the `.claude` layer, a security-only `CLAUDE.md`, `CLAUDE.local.md`, the docs templates, and the managed ignore entries; the web-stack extras (`.env.example`, `.dockerignore`, the kit conf) were not added.
+The registry now lists 9 projects, all of which exist. "Core layer" = the `.claude` layer, a security-only `CLAUDE.md`, `CLAUDE.local.md`, the docs templates, and the managed ignore entries; web-stack extras were not added. Non-git projects have no git undo; each conversion saved a backup under the home `.claude/starter-kit-backups/`.
 
 ## Phases
 
@@ -102,19 +109,19 @@ Non-git projects have no git undo; each conversion saved a backup under the home
 
 ### Phase 4: tessera repo (separate repo)
 - [x] Plugin MCP server and hooks path fixed (tessera PR #14, merged)
-- [x] Policy template updated to canonical v3 plus `plan_save`, with tests; package version aligned to 0.4.1 (tessera PR #15, open)
-- [ ] Verify the PyPI name collision, then fix README and `install.sh` install lines (they still mention `uvx --from tessera` and `pip install tessera`)
-- [ ] Read-only gap report: bundled skills and hooks versus upstream obra/superpowers and plannotator
-- [ ] Apply approved skill and hook updates with tests
+- [x] Policy template updated to canonical v3 plus `plan_save`, with tests; package version aligned to 0.4.1 (tessera PR #15, merged)
+- [x] PyPI name collision verified (unrelated project); README and `install.sh` install from GitHub, installer installs the command before the plugin, committed-fixture rewrite fixed, guard tests added (tessera PR #16, open)
+- [x] Merged branches cleaned up (7 remote, 9 local) and 4 old local-only branches whose commits are already in `main` removed; only `main` and the PR #16 branch remain
+- [x] Upstream gap report (see findings). Decision needed: keep the bundled skills as an adapted fork and record the upstream commit they track; re-base them on Superpowers v7.0.0 with tessera's graph calls as small overlays; or stop bundling and depend on the upstream plugin (the cost is the extra plugin installs ADR-003 avoided). Also add `diagnosing-superpowers` if the bundle is kept
+- [ ] Update the installed `plannotator` binary (0.27.25 to 0.28.17) with its own installer; a user action on the user's machine
 
-### Phase 5: Rollout (done except merging the review branches)
-- [x] Merge the open PRs so rollout uses them (kit PR #4, #5; tessera PR #15)
+### Phase 5: Rollout (done)
+- [x] Merge the open PRs so rollout uses them (kit PR #4, #5, #6; tessera PR #15)
 - [x] Install the Tessera plugin on the user's machine; remove the direct Plannotator hooks from the kit's local `settings.json`
-- [x] onshift, frictionlog and onshift-native synced and merged by the user
-- [x] The five dirty repos had their uncommitted work committed and landed on `main` (sensitive data kept out; see findings), then synced on review branches
-- [x] The five non-git projects converted in backup mode; FinHub (empty) skipped; the two registry entries whose folders no longer existed were removed
-- [ ] User reviews and merges the five review branches (`git -C <project> switch main && git -C <project> merge chore/starter-kit-sync-20261012`)
-- [ ] Run each synced project once in Claude Code to confirm the `${CLAUDE_PROJECT_DIR}` hooks and the plugin load without errors
+- [x] onshift, frictionlog, onshift-native and nodulerisk synced and merged
+- [x] The four projects the user is deleting had their work committed first (sensitive data kept out; see earlier findings); the five non-git projects were converted in backup mode; FinHub (empty) skipped; stale registry entries removed
+- [x] First live run in a synced project: the `${CLAUDE_PROJECT_DIR}` hooks and the plugin load without errors (onshift report; this session also saw the real guard run and block through the variable form)
+- [ ] One manual check in a cloud session (see findings)
 
 ### Phase 6: Verification
 - [ ] Sync a copy of onshift in a scratch directory; a second sync produces no diff
@@ -125,6 +132,8 @@ Non-git projects have no git undo; each conversion saved a backup under the home
 - `docs/index.html` screenshot alt text and caption still say "26 commands"; the screenshot image itself may show the old count.
 - A project's own copies of the three global hooks (left over from older scaffolds) are reported as custom and left alone.
 - Committed `.mdd/` audits (onshift) stay tracked; the ignore entry only affects new files.
+- The spec gaps in the Go, Python, Vue and Angular sections that are listed as not fixed above.
+- The branch guard only recognises `git commit`; git plumbing is not covered (it is a guard against mistakes, not a security boundary).
 
 ## What needs a local session
 

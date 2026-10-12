@@ -457,6 +457,30 @@ describe('command docs stay wired to the engine', () => {
     }
   });
 
+  it('new-project.md defines its path conventions and a finish sequence for the step-by-step modes', () => {
+    const t = command('new-project');
+    expect(t).not.toMatch(/\$\(pwd\)\/scripts\/kit-apply\.sh/);
+    expect(t).toMatch(/`\$SOURCE` is the starter kit root/);
+    expect(t).toMatch(/## Finish Sequence/);
+    // order: files, features.json, layer, git init, commit, register
+    const finish = t.slice(t.indexOf('## Finish Sequence'), t.indexOf('## Beacon Skill Discovery'));
+    const order = ['features.json', 'kit-apply.sh', '`git init`', 'commit -m', 'Register the project'].map((x) => finish.indexOf(x));
+    expect(order.every((i) => i >= 0)).toBe(true);
+    expect([...order].sort((a, b) => a - b)).toEqual(order);
+    expect(finish).toMatch(/literal absolute path/);
+    expect(finish).toMatch(/Do not get around it with git plumbing/);
+    // every step-by-step mode points at it
+    expect((t.match(/Finish Sequence/g) ?? []).length).toBeGreaterThanOrEqual(7);
+  });
+
+  it('documents Beacon skill discovery honestly, and kit-apply.sh points at it', () => {
+    const t = command('new-project');
+    const section = t.slice(t.indexOf('## Beacon Skill Discovery'), t.indexOf('## Clean Mode'));
+    expect(section).toMatch(/records \*\*no install commands\*\*/);
+    expect(section).toMatch(/read-only/);
+    expect(read('scripts/kit-apply.sh')).toMatch(/Beacon Skill Discovery/);
+  });
+
   it('documents every option kit-apply.sh parses in its usage header', () => {
     const script = read('scripts/kit-apply.sh');
     const header = script.split('\nset -euo pipefail')[0];

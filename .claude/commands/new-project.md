@@ -11,6 +11,8 @@ Create a new project with all best practices from the Claude Code Mastery Guides
 
 **Arguments:** $ARGUMENTS
 
+**Conventions used below:** `$SOURCE` is the starter kit root (the current folder when this command runs from the kit, otherwise the path saved in `~/.claude/starter-kit-source-path`). `$PROJECT_PATH` is the absolute path of the project being created. In `git commit` commands write the literal absolute path, not a variable (see Finish Sequence).
+
 ## Argument Parsing
 
 ### Step 0 — Read the config file
@@ -119,7 +121,7 @@ node scripts/registry.mjs add --name "my-app" --path "/home/user/projects/my-app
   --profile default --language node --framework next --database mongo
 ```
 
-This creates the registry if it is missing, repairs an older-shaped one, and updates the entry if the path is already registered. The stored entry looks like:
+This creates the registry if it is missing, repairs an older-shaped one, and updates the entry if the path is already registered. Sandboxes and tests can point the tool at another file with the `STARTER_KIT_REGISTRY` environment variable. The stored entry looks like:
 
 ```json
 {
@@ -145,6 +147,35 @@ This creates the registry if it is missing, repairs an older-shaped one, and upd
 The two scaffold scripts (`scaffold-default.sh`, `scaffold-clean.sh`) already do this. If registration fails, the project is still created; they print the exact command to run once the registry is fixed.
 
 **This step happens AFTER git init and initial commit, as the very last action before displaying the verification checklist.**
+
+---
+
+## Finish Sequence (Go, Python, and every framework mode except the default Next.js script)
+
+The two scaffold scripts do this internally. Modes that are carried out step by step must end in this order:
+
+1. Create all project files, including `.gitignore` and `CLAUDE.md`.
+2. Write `.claude/features.json` (see the Feature Manifest step below); create `.claude/` first if it does not exist.
+3. Apply the starter-kit layer: `bash "$SOURCE/scripts/kit-apply.sh" "$PROJECT_PATH" --profile default`.
+4. `git init` the project (skip if it is already a repository).
+5. Stage everything and make the initial commit with the literal absolute path and no shell variables: `git -C /absolute/path/to/project add -A`, then `git -C /absolute/path/to/project commit -m "Initial <mode> project scaffold"`. The branch guard (`check-branch.sh`) decides which repository a commit targets by reading the command text. It resolves `NAME=/path; git -C "$NAME" commit` inside one command, but a variable set in an earlier tool call cannot be resolved, so the guard falls back to the folder Claude was started in (the starter kit, usually on `main`) and blocks the commit. An initial commit in a repository that has no commits yet is always allowed.
+6. Register the project (Project Registry above).
+7. Display the verification checklist.
+
+If the guard blocks a commit, fix the cause (usually an unresolvable path). Do not get around it with git plumbing (`commit-tree`, `update-ref`).
+
+---
+
+## Beacon Skill Discovery (optional, after a project is created, synced, or converted)
+
+Ask the Beacon agent which locally indexed components fit the project's stack:
+
+> Search the beacon-tasks index for skills, agents, and hooks relevant to a <profile> project using <language> and <framework>. Recommend the top 3-5 most valuable. This is read-only: do not install anything. If little or nothing in the index fits, say so instead of padding the list.
+
+What to expect:
+- The index is `~/.claude/beacon-tasks/components/beacon-index.md`. It is a small local list that leans towards web and frontend work, so a Swift, shell, or document project may get no useful match, and that is a correct answer.
+- The index records **no install commands**. Agents are run with `beacon <name> "<task>"`; hooks are definition files that you wire into `settings.json` yourself; further components come from the Beacon marketplace (the index points at `http://localhost:4747`).
+- Do not invent install commands, and do not enable a recommended hook blindly: some stage files automatically or reformat Markdown and JSON.
 
 ---
 
@@ -748,8 +779,8 @@ When creating a Go project, the CLAUDE.md MUST include these Go-specific rules:
 15. Create `README.md` with Go-specific instructions
 16. Create `scripts/deploy.sh` if Dokploy hosting was selected
 17. Run `go mod tidy` to resolve dependencies
-17b. Apply the starter-kit layer: `bash "$(pwd)/scripts/kit-apply.sh" "$PROJECT_PATH" --profile default` — copies commands, skills, agents, project hooks, writes settings.json, adds `.gitignore` entries, adds the workflow block to CLAUDE.md, checks and installs Beacon / Plannotator / Tessera plugin, runs `tessera scan`
-18. Initialize git, create initial commit: "Initial Go project scaffold"
+17b. Apply the starter-kit layer: `bash "$SOURCE/scripts/kit-apply.sh" "$PROJECT_PATH" --profile default` — copies commands, skills, agents, project hooks, writes settings.json, adds `.gitignore` entries, adds the workflow block to CLAUDE.md, checks and installs Beacon / Plannotator / Tessera plugin, runs `tessera scan`
+18. Initialize git and create the initial commit: "Initial Go project scaffold" (follow the Finish Sequence: write `.claude/features.json` before step 17b, commit with the literal absolute path, then register)
 19. Display verification checklist
 
 ### Go Verification Checklist
@@ -1225,8 +1256,8 @@ When creating a Python project, the CLAUDE.md MUST include these Python-specific
 17. Create `README.md` with Python-specific instructions
 18. Create virtual environment: `python -m venv .venv`
 19. Install dependencies: `.venv/bin/pip install -r requirements.txt -r requirements-dev.txt`
-19b. Apply the starter-kit layer: `bash "$(pwd)/scripts/kit-apply.sh" "$PROJECT_PATH" --profile default` — copies commands, skills, agents, project hooks, writes settings.json, adds `.gitignore` entries, adds the workflow block to CLAUDE.md, checks and installs Beacon / Plannotator / Tessera plugin, runs `tessera scan`
-20. Initialize git, create initial commit: "Initial Python project scaffold"
+19b. Apply the starter-kit layer: `bash "$SOURCE/scripts/kit-apply.sh" "$PROJECT_PATH" --profile default` — copies commands, skills, agents, project hooks, writes settings.json, adds `.gitignore` entries, adds the workflow block to CLAUDE.md, checks and installs Beacon / Plannotator / Tessera plugin, runs `tessera scan`
+20. Initialize git and create the initial commit: "Initial Python project scaffold" (follow the Finish Sequence: write `.claude/features.json` before step 19b, commit with the literal absolute path, then register)
 21. Display verification checklist
 
 ### Python Verification Checklist
@@ -1728,7 +1759,7 @@ Sitemap: https://example.com/sitemap.xml
 **CLI scaffold:** `npm create vue@latest PROJECT -- --typescript --router --pinia`
 
 After scaffold:
-- Apply the starter-kit layer with `bash "$(pwd)/scripts/kit-apply.sh" "$PROJECT_PATH" --profile default` after CLAUDE.md and `.gitignore` exist and before the initial commit (never copy the kit's own `.claude/settings.json`)
+- Apply the starter-kit layer with `bash "$SOURCE/scripts/kit-apply.sh" "$PROJECT_PATH" --profile default` after CLAUDE.md and `.gitignore` exist and before the initial commit (never copy the kit's own `.claude/settings.json`), then follow the Finish Sequence
 - Add `docs/`, CLAUDE.md, CLAUDE.local.md, `.env` files
 - Vitest is included by default from `create vue`
 
@@ -1748,7 +1779,7 @@ After scaffold:
 **CLI scaffold:** `npx nuxi@latest init PROJECT --package-manager pnpm`
 
 After scaffold:
-- Apply the starter-kit layer with `bash "$(pwd)/scripts/kit-apply.sh" "$PROJECT_PATH" --profile default` after CLAUDE.md and `.gitignore` exist and before the initial commit (never copy the kit's own `.claude/settings.json`)
+- Apply the starter-kit layer with `bash "$SOURCE/scripts/kit-apply.sh" "$PROJECT_PATH" --profile default` after CLAUDE.md and `.gitignore` exist and before the initial commit (never copy the kit's own `.claude/settings.json`), then follow the Finish Sequence
 - Add `docs/`, CLAUDE.md, CLAUDE.local.md, `.env` files
 - Vitest and Playwright added via `npx nuxi module add @nuxt/test-utils`
 
@@ -1767,7 +1798,7 @@ After scaffold:
 **CLI scaffold:** `npx sv create PROJECT` (select TypeScript skeleton)
 
 After scaffold:
-- Apply the starter-kit layer with `bash "$(pwd)/scripts/kit-apply.sh" "$PROJECT_PATH" --profile default` after CLAUDE.md and `.gitignore` exist and before the initial commit (never copy the kit's own `.claude/settings.json`)
+- Apply the starter-kit layer with `bash "$SOURCE/scripts/kit-apply.sh" "$PROJECT_PATH" --profile default` after CLAUDE.md and `.gitignore` exist and before the initial commit (never copy the kit's own `.claude/settings.json`), then follow the Finish Sequence
 - Add `docs/`, CLAUDE.md, CLAUDE.local.md, `.env` files
 - `sv create` includes Vitest + Playwright if selected during setup
 
@@ -1786,7 +1817,7 @@ After scaffold:
 **CLI scaffold:** `npx @angular/cli new PROJECT --style=scss --routing --ssr=false`
 
 After scaffold:
-- Apply the starter-kit layer with `bash "$(pwd)/scripts/kit-apply.sh" "$PROJECT_PATH" --profile default` after CLAUDE.md and `.gitignore` exist and before the initial commit (never copy the kit's own `.claude/settings.json`)
+- Apply the starter-kit layer with `bash "$SOURCE/scripts/kit-apply.sh" "$PROJECT_PATH" --profile default` after CLAUDE.md and `.gitignore` exist and before the initial commit (never copy the kit's own `.claude/settings.json`), then follow the Finish Sequence
 - Add `docs/`, CLAUDE.md, CLAUDE.local.md, `.env` files
 - Angular includes Jasmine by default — optionally add Vitest with `@analogjs/vitest-angular`
 - Add Playwright for E2E: `npm init playwright@latest`
