@@ -55,3 +55,6 @@ _ai_temp/
 # Misc
 *.bak
 *.tmp
+
+# Local tessera MCP config (contains an absolute local path)
+.mcp.json
