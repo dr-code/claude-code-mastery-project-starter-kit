@@ -66,9 +66,9 @@ Everything after the project name/path is shorthand options or a profile name.
 
 Parse remaining $ARGUMENTS for these keywords:
 
-**Profiles:** `clean`, `default`, `api`, `static-site`, `quick`, `enterprise`, `go`, `vue`, `nuxt`, `svelte`, `sveltekit`, `angular`, `python-api`, `django`, `flask` (from `claude-mastery-project.conf`)
+**Profiles:** `clean`, `default`, `api`, `static-site`, `quick`, `enterprise`, `go`, `vue`, `nuxt`, `svelte`, `sveltekit`, `angular`, `python-api`, `django`, `flask`, `swift` (from `claude-mastery-project.conf`)
 **Special:** `clean` — Claude infrastructure only, zero coding opinions (see Clean Mode below)
-**Languages:** `go`, `golang` (triggers Go scaffolding — see Go Mode below) | `python`, `py` (triggers Python Mode below)
+**Languages:** `go`, `golang` (triggers Go scaffolding — see Go Mode below) | `python`, `py` (triggers Python Mode below) | `swift`, `macos`, `swiftui` (triggers Swift Mode below)
 **Project types:** `webapp`, `api`, `fullstack`, `cli`
 **Frameworks:** `vite`, `react`, `next`, `nextjs`, `astro`, `fastify`, `express`, `hono`, `vue`, `nuxt`, `svelte`, `sveltekit`, `angular`
 **Go Frameworks:** `gin`, `chi`, `echo`, `fiber`, `stdlib`
@@ -150,7 +150,7 @@ The two scaffold scripts (`scaffold-default.sh`, `scaffold-clean.sh`) already do
 
 ---
 
-## Finish Sequence (Go, Python, and every framework mode except the default Next.js script)
+## Finish Sequence (Go, Python, Swift, and every framework mode except the default Next.js script)
 
 The two scaffold scripts do this internally. Modes that are carried out step by step must end in this order:
 
@@ -1303,6 +1303,163 @@ After creation, verify and report:
 - [ ] No `tsconfig.json`
 - [ ] No `node_modules/`
 - [ ] No `go.mod`
+
+Report any missing items.
+
+---
+
+## Swift Mode — `swift` / `macos`
+
+**If `swift`, `macos`, or `swiftui` is detected in arguments, OR the resolved profile has `language = swift`, skip ALL of Steps 1-2 below and follow this section instead.** This mode scaffolds a native macOS app. It does not cover iOS, watchOS, or Swift server frameworks.
+
+### Swift Prerequisites
+
+Check before scaffolding and stop with the install command if missing:
+
+- Full Xcode (not only Command Line Tools): `xcodebuild -version` must succeed. If `xcode-select -p` points at `/Library/Developer/CommandLineTools`, tell the user to run `sudo xcode-select -s /Applications/Xcode.app/Contents/Developer`.
+- XcodeGen: `command -v xcodegen`, else `brew install xcodegen`.
+
+### Swift Questions (skip any answered by arguments or profile)
+
+1. **App style**: menu bar app (`LSUIElement`, `MenuBarExtra`) or windowed app (`WindowGroup`). Default: windowed.
+2. **Deployment target**: default to the installed macOS SDK major version (`xcrun --sdk macosx --show-sdk-version`); offer one version lower for wider compatibility.
+3. **App sandbox**: on or off. Default: on. Off is simpler for apps that browse arbitrary files but rules out the Mac App Store; record the choice in `docs/DECISIONS.md`.
+4. **Bundle identifier prefix**: ask. Never invent one and never use the user's real name or email as the default. If the user does not know yet, use `com.example` and say it is a placeholder that must be changed before signing or distribution.
+
+### Swift Project Structure
+
+```
+<project>/
+├── project.yml                  # XcodeGen spec: source of truth for the Xcode project
+├── Sources/<project>/
+│   ├── App/                     # @main entry point
+│   ├── Models/                  # Codable, Sendable value types
+│   ├── Services/                # file access, persistence, system integration
+│   ├── Views/                   # SwiftUI views
+│   └── Resources/               # assets
+├── Tests/<project>Tests/        # Swift Testing suites
+├── docs/
+├── .claude/
+├── CLAUDE.md
+└── .gitignore
+```
+
+Use the project name verbatim for the target and scheme. If it contains a hyphen, the XcodeGen target name keeps the hyphen but Xcode underscores the Swift module name (`my-app` -> `my_app`), so use the underscored name in `@testable import`. No extra build setting is needed.
+
+### Swift Template: `project.yml`
+
+```yaml
+name: <project>
+options:
+  bundleIdPrefix: <bundle-prefix>
+  deploymentTarget:
+    macOS: "<deployment-target>"
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    SWIFT_STRICT_CONCURRENCY: complete
+targets:
+  <project>:
+    type: application
+    platform: macOS
+    sources: [Sources/<project>]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: <bundle-prefix>.<project>
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_LSUIElement: YES      # menu bar apps only; omit for windowed apps
+        CODE_SIGN_STYLE: Automatic
+        ENABLE_APP_SANDBOX: NO              # YES when the sandbox answer is on
+  <project>Tests:
+    type: bundle.unit-test
+    platform: macOS
+    sources: [Tests/<project>Tests]
+    dependencies:
+      - target: <project>
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        BUNDLE_LOADER: "$(TEST_HOST)"
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/<project>.app/Contents/MacOS/<project>"
+schemes:
+  <project>:
+    build:
+      targets:
+        <project>: all
+    test:
+      targets: [<project>Tests]
+```
+
+### Swift Template: app entry point and first test
+
+Menu bar app:
+
+```swift
+import SwiftUI
+
+@main
+struct <ProjectName>App: App {
+    var body: some Scene {
+        MenuBarExtra("<project>", systemImage: "line.3.horizontal") {
+            Button("Quit") { NSApplication.shared.terminate(nil) }
+        }
+    }
+}
+```
+
+Windowed app: replace the scene with `WindowGroup { ContentView() }` and add a minimal `Views/ContentView.swift`.
+
+Always add one `Codable, Equatable, Sendable` model in `Models/` and a Swift Testing test for it (`import Testing`, `@Test`, `#expect`, `@testable import <module>`), so the test target is proven to link on day one.
+
+### Swift Template: `.gitignore`
+
+```
+*.xcodeproj
+DerivedData/
+.build/
+xcuserdata/
+*.xcuserstate
+.env
+.env.local
+CLAUDE.local.md
+.claude/settings.local.json
+.tessera/
+*.db
+.DS_Store
+```
+
+`.mcp.json` is added by `kit-apply.sh` (managed entries).
+
+### Swift-Specific CLAUDE.md Rules
+
+Add to the universal security rules:
+
+- `project.yml` is the source of truth. `*.xcodeproj` is generated and gitignored. Never hand-edit the pbxproj; run `xcodegen generate` after adding or moving files.
+- Swift 6 strict concurrency. UI types are `@MainActor`. Prefer `async/await` and actors over callbacks and locks.
+- SwiftUI first; use AppKit (`NSStatusItem`, `NSMenu`, `NSViewRepresentable`) only where SwiftUI cannot do the job.
+- Views hold no business logic; they read `@Observable` models.
+- Persist Codable structs under Application Support with a schema version.
+- Test models and services with Swift Testing, not views.
+- Dev commands: build `xcodegen generate && xcodebuild -scheme <project> -destination 'platform=macOS' build`; test the same with `test`; lint `swift format lint --recursive Sources Tests --strict` (ships with the toolchain; SwiftLint is not assumed).
+
+### Swift Scaffolding Steps
+
+1. Run the prerequisite checks and ask the Swift questions.
+2. Create the project directory and the structure above.
+3. Write `project.yml`, the entry point, the model, and the test from the templates.
+4. Write `.gitignore`, `.env.example` (empty, no variables), `CLAUDE.md`, `CLAUDE.local.md`, `README.md`, and the `docs/` templates. Record the deployment target, sandbox choice, and bundle prefix as ADRs in `docs/DECISIONS.md`.
+5. Run `xcodegen generate`, then `xcodebuild -scheme <project> -destination 'platform=macOS' test`. Do not continue if either fails.
+6. Follow the Finish Sequence: write `.claude/features.json`, apply the starter-kit layer with `bash "$SOURCE/scripts/kit-apply.sh" "$PROJECT_PATH" --profile default`, `git init`, commit "Initial Swift project scaffold" with the literal absolute path, register the project (`--language swift --framework swiftui`), then display the checklist.
+
+### Swift Verification Checklist
+
+- [ ] `project.yml` exists and `xcodegen generate` succeeds
+- [ ] `xcodebuild ... test` reports `** TEST SUCCEEDED **`
+- [ ] `*.xcodeproj` is NOT tracked by git (`git ls-files | grep xcodeproj` is empty)
+- [ ] No placeholder bundle prefix left unflagged (if `com.example` was used, the README and `docs/DECISIONS.md` say it must be changed)
+- [ ] `.env.example` exists and is empty
+- [ ] `.claude/` has the commands from `starter-kit-manifest.json`
+- [ ] NO `package.json`, `go.mod`, or `pyproject.toml`
 
 Report any missing items.
 
