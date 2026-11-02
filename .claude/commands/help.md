@@ -42,7 +42,7 @@ GETTING STARTED
   /show-user-guide   Open the comprehensive User Guide in your browser
 
 KIT MANAGEMENT (starter kit only — not copied to projects)
-  /new-project       Scaffold a new project from a profile (clean, default, api, go, vue, python-api, etc.)
+  /new-project       Scaffold a new project from a profile (clean, default, api, go, vue, python-api, swift, etc.)
   /set-project-profile-default  Set the default profile for /new-project (any profile name)
   /add-project-setup  Interactive wizard to create a named profile in claude-mastery-project.conf
   /projects-created  List all projects created by the starter kit with creation dates
