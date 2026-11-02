@@ -1324,7 +1324,7 @@ Check before scaffolding and stop with the install command if missing:
 1. **App style**: menu bar app (`LSUIElement`, `MenuBarExtra`) or windowed app (`WindowGroup`). Default: windowed.
 2. **Deployment target**: default to the installed macOS SDK major version (`xcrun --sdk macosx --show-sdk-version`); offer one version lower for wider compatibility.
 3. **App sandbox**: on or off. Default: on. Off is simpler for apps that browse arbitrary files but rules out the Mac App Store; record the choice in `docs/DECISIONS.md`.
-4. **Bundle identifier prefix**: ask. Never invent one and never use the user's real name or email as the default. If the user does not know yet, use `com.example` and say it is a placeholder that must be changed before signing or distribution.
+4. **Bundle identifier prefix**: ask. Never use the user's real name or email. Default to `io.github.<github-username>` (from `gh api user --jq .login`, falling back to `git config github.user`); it needs no owned domain. Use `com.example` only if no GitHub username can be found, and flag it as a placeholder that must be changed before signing or distribution.
 
 ### Swift Project Structure
 

@@ -79,3 +79,30 @@ This repo's `docs/` directory powers the website/docs app, so it is not the per-
 - Quality over speed — if unsure, ask before executing
 - Plan first, code second — use plan mode for non-trivial tasks
 - One task, one chat — `/clear` between unrelated tasks
+
+## Integrated Workflow (Superpowers + Plannotator)
+
+Install Plannotator once: `curl -fsSL https://plannotator.ai/install.sh | bash`
+
+For any non-trivial feature: `brainstorming` → `writing-plans` (saves via `plan_save`) → ExitPlanMode (Plannotator visual review) → `subagent-driven-development` or `executing-plans` → `verification-before-completion` → `finishing-a-development-branch`
+
+Available skills: `brainstorming`, `writing-plans`, `subagent-driven-development`, `executing-plans`, `test-driven-development`, `systematic-debugging`, `verification-before-completion`, `requesting-code-review`, `receiving-code-review`, `using-git-worktrees`, `dispatching-parallel-agents`, `finishing-a-development-branch`, `writing-skills`, `using-superpowers`
+
+<!-- TESSERA:START v3 -->
+## Tessera Graph Policy (MANDATORY)
+
+**Call `graph_continue` as FIRST tool call every turn.**
+
+- If `needs_scan=true`: run `graph_scan` with the project root path
+- If `skip=true`: project too small, proceed normally
+- If error: proceed normally without graph routing for this turn
+- Read all `recommended_files` via `graph_read` before other exploration
+- Obey confidence caps:
+  - high: no supplementary greps or reads
+  - medium/low: up to max_supplementary_greps + max_supplementary_files
+- After edits: `graph_register_edit` with `file::symbol` notation and summary
+  - Pass `checklist_item_id` from `active_checklist` when completing a plan step
+- Architectural decisions: `graph_lock_decision` with scope + affected files
+- Approved plans: archive with `plan_save` (`project_name`, `subtask_name`, `task`, `plan_markdown`) so `tessera-verify` can track compliance
+- Max 1 `graph_retrieve` per turn. No raw grep/rg before `graph_continue`.
+<!-- TESSERA:END -->
